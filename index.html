@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VIT FFCS Planner — 3rd Sem</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="hdr">
+  <div class="hdr-title">VIT <span>FFCS</span> Planner — 3rd Sem</div>
+  <div class="hdr-r">
+    <button class="btn-gen" onclick="generate()">⚡ Generate Timetables</button>
+    <button class="btn-clr" onclick="if(confirm('Clear all?')){S.priorities={};S.combos=[];render()}">Clear</button>
+  </div>
+</header>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sb-scroll">
+      <div class="sb-sec">
+        <div class="sb-title">Selectors</div>
+        <div class="sel-g"><div class="sel-gl">HSM Course</div><div class="sel-row" id="sel-HSM"></div></div>
+        <div class="sel-g"><div class="sel-gl">Language</div><div class="sel-row" id="sel-LANG"></div></div>
+        <div class="sel-g"><div class="sel-gl">APT Vendor</div><div class="sel-row" id="sel-QQ"></div></div>
+      </div>
+      <div class="sb-sec"><div class="sb-title">Faculty Priority — click to expand</div></div>
+      <div id="course-cards"></div>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="legend">
+      <div class="leg-i"><div class="leg-d" style="background:#7C3AED"></div>BACSE324 Embedded</div>
+      <div class="leg-i"><div class="leg-d" style="background:#0EA5E9"></div>BACSE202 DB</div>
+      <div class="leg-i"><div class="leg-d" style="background:#059669"></div>BACSE203 Networks</div>
+      <div class="leg-i"><div class="leg-d" style="background:#DC2626"></div>BAMAT207 Stats</div>
+      <div class="leg-i"><div class="leg-d" style="background:#EA580C"></div>BACSE102 Java</div>
+      <div class="leg-i"><div class="leg-d" style="background:#7C2D8F"></div>QQ Skills</div>
+      <div class="leg-i"><div class="leg-d" style="background:#0891B2"></div>HSM</div>
+      <div class="leg-i"><div class="leg-d" style="background:#BE185D"></div>Language</div>
+    </div>
+    <div id="results"></div>
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
