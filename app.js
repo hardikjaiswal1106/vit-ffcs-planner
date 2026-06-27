@@ -52,7 +52,34 @@ function generate() {
       if (combos.length >= MAX) return;
     }
     if (!placed || pairs.length === 0) {
-      current.push({ code, pair: null });
+      // Find what's blocking each pair
+      const clashReasons = [];
+      pairs.forEach(pair => {
+        const keys = [
+          ...(pair.theory ? slotKeys(pair.theory.slot) : []),
+          ...(pair.lab    ? slotKeys(pair.lab.slot)    : [])
+        ];
+        keys.forEach(k => {
+          if (used.has(k)) {
+            // Find which placed course owns this key
+            const blocker = current.find(({code:c, pair:p}) => {
+              if (!p) return false;
+              const bkeys = [
+                ...(p.theory ? slotKeys(p.theory.slot) : []),
+                ...(p.lab    ? slotKeys(p.lab.slot)    : [])
+              ];
+              return bkeys.includes(k);
+            });
+            if (blocker) {
+              const type = pair.theory && slotKeys(pair.theory.slot).includes(k) ? 'theory' : 'lab';
+              const btype = blocker.pair.theory && slotKeys(blocker.pair.theory.slot).includes(k) ? 'theory' : 'lab';
+              clashReasons.push(COURSES[blocker.code].short + ' ' + btype);
+            }
+          }
+        });
+      });
+      const uniqueReasons = [...new Set(clashReasons)].slice(0,2).join(', ');
+      current.push({ code, pair: null, clashWith: uniqueReasons });
       backtrack(idx + 1, current, used);
       current.pop();
     }
@@ -206,18 +233,45 @@ function renderResults() {
     return;
   }
   const total = S.combos.length, cur = S.curCombo, combo = S.combos[cur];
-  let credits=0, days=new Set(), placed=0;
-  combo.forEach(({code,pair})=>{ if(!pair)return; placed++; credits+=COURSES[code].credits;
-    if(pair.theory) slotCells(pair.theory.slot).forEach(c=>days.add(c.day));
-    if(pair.lab)    slotCells(pair.lab.slot).forEach(c=>days.add(c.day));
+  let credits=0, placed=0;
+  const labDays = new Set(), unplaced = [], clashInfo = [];
+  const occupied = {};
+  combo.forEach(({code,pair,clashWith}) => {
+    if (!pair) { unplaced.push({code, clashWith: clashWith||''}); return; }
+    placed++; credits += COURSES[code].credits;
+    if (pair.theory) {
+      slotKeys(pair.theory.slot).forEach(k => {
+        if (occupied[k]) clashInfo.push(COURSES[code].short+' theory ↔ '+COURSES[occupied[k].code].short+' '+occupied[k].type);
+        else occupied[k] = {code, type:'theory'};
+      });
+    }
+    if (pair.lab) {
+      slotCells(pair.lab.slot).forEach(c => labDays.add(c.day));
+      slotKeys(pair.lab.slot).forEach(k => {
+        if (occupied[k]) clashInfo.push(COURSES[code].short+' lab ↔ '+COURSES[occupied[k].code].short+' '+occupied[k].type);
+        else occupied[k] = {code, type:'lab'};
+      });
+    }
   });
-  const warns = S.warnings.map(w=>`<div class="warn-bar">⚠️ ${w}</div>`).join("");
+  const freeDays = 5 - labDays.size;
+  const totalC = Object.keys(COURSES).length;
+  const clashHtml = [...new Set(clashInfo)].slice(0,3).map(c=>`<span class="clash-pill">⚠️ ${c}</span>`).join('');
+  const unplacedHtml = unplaced.map(({code:c, clashWith:cw})=>{
+    const reason = cw ? ' clashes with '+cw : '';
+    return `<span class="unplaced-pill">❌ ${COURSES[c].short}${reason}</span>`;
+  }).join('');
+  const warns = S.warnings.map(w=>`<div class="warn-bar">⚠️ ${w}</div>`).join('');
   el.innerHTML = `${warns}
     <div class="tt-nav">
-      <button class="nbtn" onclick="navCombo(-1)" ${cur===0?"disabled":""}>← Prev</button>
-      <span class="nlbl">Timetable <b>${cur+1}</b> / <b>${total}</b>${total===50?" · best 50":""}</span>
-      <button class="nbtn" onclick="navCombo(1)" ${cur===total-1?"disabled":""}>Next →</button>
-      <div class="nstats"><span>📚 <b>${credits}</b> credits</span><span>🌴 <b>${5-days.size}</b> free days</span><span>✅ <b>${placed}</b> / ${Object.keys(COURSES).length} placed</span></div>
+      <button class="nbtn" onclick="navCombo(-1)" ${cur===0?'disabled':''}>← Prev</button>
+      <span class="nlbl">Timetable <b>${cur+1}</b> / <b>${total}</b>${total===50?' · best 50':''}</span>
+      <button class="nbtn" onclick="navCombo(1)" ${cur===total-1?'disabled':''}>Next →</button>
+      <div class="nstats">
+        <span>📚 <b>${credits}</b> credits</span>
+        <span>🌴 <b>${freeDays}</b> free day${freeDays!==1?'s':''}</span>
+        <span class="${placed<totalC?'stat-warn':''}">✅ <b>${placed}/${totalC}</b></span>
+        ${unplacedHtml}${clashHtml}
+      </div>
       <button class="btn-export" onclick="exportPNG()">📥 Save PNG</button>
     </div>
     <div id="tt-wrap">${buildTT(combo)}</div>`;
