@@ -51,18 +51,20 @@ function generate() {
   const MAX = 50;
   const combos = [], warnings = [];
 
-  const coursePairs = {};
+  // A course with nobody ranked is left out entirely — it is never
+  // auto-filled with a random faculty. Only ranked faculty are ever used.
+  const coursePairs = {}, unranked = {};
   codes.forEach(code => {
     const all = buildPairs(code);
     const prios = S.priorities[code] || [];
     const prioDisplays = prios.map(p => p.display);
-    const ordered = [], rest = [];
+    const ordered = [];
     all.forEach(p => {
       const idx = prioDisplays.indexOf(p.display);
-      if (idx >= 0) ordered[idx] = p; else rest.push(p);
+      if (idx >= 0) ordered[idx] = p;
     });
-    coursePairs[code] = prios.length > 0 ? ordered.filter(Boolean) : rest;
-    if (!coursePairs[code].length) warnings.push(`No options available for ${COURSES[code].name}.`);
+    coursePairs[code] = ordered.filter(Boolean);
+    unranked[code] = prios.length === 0;
   });
 
   function backtrack(idx, current, used) {
@@ -105,7 +107,11 @@ function generate() {
           if (blocker) reasons.push(COURSES[blocker.code].short);
         });
       });
-      current.push({ code, pair: null, clashWith: [...new Set(reasons)].slice(0,2).join(" and ") });
+      current.push({
+        code, pair: null,
+        clashWith: [...new Set(reasons)].slice(0,2).join(" and "),
+        noPrio: unranked[code]
+      });
       backtrack(idx + 1, current, used);
       current.pop();
     }
@@ -128,8 +134,7 @@ function render() {
 }
 
 function renderSelectors() {
-  seg("sel-HSM", "HSM", COURSES.HSM.selectorOptions, COURSES.HSM.selectorNames);
-  seg("sel-QQ",  "QQ",  COURSES.QQ.selectorOptions,  {});
+  seg("sel-QQ", "QQ", COURSES.QQ.selectorOptions, {});
 }
 
 function seg(elId, key, opts, names) {
@@ -150,6 +155,12 @@ function renderCards() {
   if (!el) return;
   const openNow = new Set([...el.querySelectorAll(".cc.open")].map(n => n.dataset.code));
   el.innerHTML = "";
+  // Courses that make you pick a specific option first (only HSM right now —
+  // the skills vendor has its own picker pinned at the top of the rail).
+  const inlinePickers = Object.keys(COURSES).filter(
+    code => COURSES[code].isSelector && COURSES[code].selectorKey !== "QQ"
+  );
+
   Object.keys(COURSES).forEach(code => {
     const c = COURSES[code];
     const n = (S.priorities[code] || []).length;
@@ -157,6 +168,9 @@ function renderCards() {
     div.className = "cc" + (openNow.has(code) ? " open" : "");
     div.dataset.code = code;
     div.style.setProperty("--c", c.color);
+    const pickerHtml = inlinePickers.includes(code)
+      ? `<div class="pick"><span class="pick-l">Which course</span><div class="seg" id="cc-seg-${code}"></div></div>`
+      : "";
     div.innerHTML = `
       <div class="cc-hdr">
         <span class="cc-swatch"></span>
@@ -165,6 +179,7 @@ function renderCards() {
         <span class="cc-caret">▼</span>
       </div>
       <div class="cc-body">
+        ${pickerHtml}
         <div class="cc-chips" id="chips-${code}"></div>
         <div class="cc-search">
           <input class="cc-input" id="ci-${code}" placeholder="Search faculty" autocomplete="off" spellcheck="false">
@@ -173,6 +188,9 @@ function renderCards() {
       </div>`;
     div.querySelector(".cc-hdr").onclick = () => div.classList.toggle("open");
     el.appendChild(div);
+    if (inlinePickers.includes(code)) {
+      seg(`cc-seg-${code}`, c.selectorKey, c.selectorOptions, c.selectorNames || {});
+    }
     renderChips(code);
     bindSearch(code);
   });
@@ -184,7 +202,7 @@ function renderChips(code) {
   const prios = S.priorities[code] || [];
   el.innerHTML = "";
   if (!prios.length) {
-    el.innerHTML = `<div class="cc-empty">Nobody ranked yet. Any faculty may be used.</div>`;
+    el.innerHTML = `<div class="cc-empty">Nobody ranked — this course won't be included.</div>`;
     return;
   }
   prios.forEach((pair, i) => {
@@ -289,7 +307,7 @@ function renderResults() {
           <rect x="17" y="17" width="6" height="6" rx="1"/>
         </svg>
         <div class="blank-t">No timetable yet</div>
-        <div class="blank-s">Rank the faculty you want in the panel on the left, then generate. Leave a course unranked to let any faculty fill it.</div>
+        <div class="blank-s">Rank the faculty you want in the panel on the left, then generate. A course with nobody ranked is left out of the timetable.</div>
       </div>`;
     return;
   }
@@ -351,11 +369,14 @@ function computeStats(combo) {
   const occupied = {}, labDays = new Set(), dayCells = {}, flags = [], clashes = new Set();
   DAYS.forEach(d => dayCells[d] = []);
 
-  combo.forEach(({ code, pair, clashWith }) => {
+  combo.forEach(({ code, pair, clashWith, noPrio }) => {
     if (!pair) {
+      const msg = noPrio
+        ? "not ranked — rank a faculty to include it"
+        : `doesn't fit${clashWith ? ` — ${clashWith} holds those slots` : ""}`;
       flags.push(`<div class="flag miss" data-miss="${code}">
         <span class="flag-k">${COURSES[code].short}</span>
-        <span class="flag-t">doesn't fit${clashWith ? ` — ${clashWith} holds those slots` : ""}</span>
+        <span class="flag-t">${msg}</span>
       </div>`);
       return;
     }
