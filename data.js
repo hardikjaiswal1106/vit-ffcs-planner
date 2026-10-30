@@ -1,27 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
-// GRID STRUCTURE — 12 columns (P1-P12) per day
-// Each column has a theory slot + lab pair (or lab-only)
+// GRID STRUCTURE — 12 columns (P1-P12) per day (same VIT grid as 3rd sem)
 // ═══════════════════════════════════════════════════════════════
-
-// Grid columns definition
-const GRID_COLS = [
-  // { id, time, theory, lab }
-  { id:"P1",  time:"8:00",       theory:"A1",   lab:"L1+L2"   },
-  { id:"P2",  time:"9:00",       theory:"F1",   lab:"L3+L4"   },
-  { id:"P3",  time:"10:00",      theory:"D1",   lab:"L5+L6"   },
-  { id:"P4",  time:"11:00",      theory:"TB1",  lab:null       },
-  { id:"P5",  time:"12:00",      theory:"TG1",  lab:null       },
-  { id:"P6",  time:"12:30",      theory:null,   lab:"L6"       },
-  { id:"BREAK", time:"",         theory:null,   lab:null,  isBreak:true },
-  { id:"P7",  time:"2:00",       theory:"A2",   lab:"L31+L32" },
-  { id:"P8",  time:"3:00",       theory:"F2",   lab:"L33+L34" },
-  { id:"P9",  time:"4:00",       theory:"D2",   lab:"L35+L36" },
-  { id:"P10", time:"5:00",       theory:"TB2",  lab:null       },
-  { id:"P11", time:"6:00",       theory:"TG2",  lab:null       },
-  { id:"P12", time:"6:31",       theory:null,   lab:"L36"      },
-];
-
-// Per-day theory slots for each column position (0-11, skip break)
 const DAY_THEORY = {
   Mon: ["A1","F1","D1","TB1","TG1",null,  "A2","F2","D2","TB2","TG2",null],
   Tue: ["B1","G1","E1","TC1","TAA1",null, "B2","G2","E2","TC2","TAA2",null],
@@ -40,8 +19,6 @@ const DAY_LAB = {
 
 const DAYS = ["Mon","Tue","Wed","Thu","Fri"];
 
-// Map theory slot name → which day+col it occupies
-// Same slot can appear on multiple days!
 const THEORY_TO_CELLS = {};
 DAYS.forEach(day => {
   DAY_THEORY[day].forEach((slot, col) => {
@@ -51,7 +28,6 @@ DAYS.forEach(day => {
   });
 });
 
-// Map individual L number → {day, col}
 const LAB_TO_CELL = {};
 DAYS.forEach(day => {
   DAY_LAB[day].forEach((lab, col) => {
@@ -60,17 +36,13 @@ DAYS.forEach(day => {
   });
 });
 
-// Get all grid cells for a slot string like "E2+TE2" or "L9+L10+L21+L22"
 function slotCells(slotStr) {
   const parts = slotStr.split("+").map(s => s.trim());
   const cells = [];
   const seen = new Set();
-
-  // Check if it's a lab slot
   const isLab = parts[0].startsWith("L");
 
   if (isLab) {
-    // Each L number maps to its own individual column
     parts.forEach(p => {
       const loc = LAB_TO_CELL[p];
       if (loc) {
@@ -79,7 +51,6 @@ function slotCells(slotStr) {
       }
     });
   } else {
-    // Theory slots
     parts.forEach(p => {
       const locs = THEORY_TO_CELLS[p] || [];
       locs.forEach(loc => {
@@ -91,468 +62,258 @@ function slotCells(slotStr) {
   return cells;
 }
 
-// Clash key for a slot
 function slotKeys(slotStr) {
   return slotCells(slotStr).map(c => `${c.day}-${c.col}-${c.isLab?'L':'T'}`);
 }
 
-// Is theory slot evening? (slot name ends in 2)
 function isEveningTheory(slotStr) {
   return /2(\+|$)/.test(slotStr.split("+")[0]);
 }
 
-// Is lab morning? (lab numbers all ≤ 30)
-function isMorningLab(slotStr) {
-  const nums = slotStr.split("+").map(p => parseInt(p.replace("L",""))).filter(n => !isNaN(n));
-  return nums.length > 0 && nums.every(n => n <= 30);
-}
-
 // ═══════════════════════════════════════════════════════════════
-// COURSE DATA
+// COURSE DATA — 4th SEM
 // ═══════════════════════════════════════════════════════════════
 const COURSES = {
-  BACSE324:{code:"BACSE324",name:"Embedded Systems",short:"embd",color:"#7C3AED",credits:4,
+  MOC:{code:"MOC",name:"Models of Computation",short:"moc",color:"#7C3AED",credits:3,
     theory:[
-      {f:"SHABEEB AHAMED K P",slot:"E1+TE1",venue:"PRP464"},
-      {f:"SHABEEB AHAMED K P",slot:"E2+TE2",venue:"PRP464"},
-      {f:"YADVENDRA SINGH",slot:"E2+TE2",venue:"PRP465"},
-      {f:"MUTHU RAJA S",slot:"E1+TE1",venue:"PRP471"},
-      {f:"SUDHAKAR M S",slot:"E1+TE1",venue:"PRP267"},
-      {f:"SUDHAKAR M S",slot:"E2+TE2",venue:"PRP267"},
-      {f:"JAFFINO",slot:"E1+TE1",venue:"PRP274"},
-      {f:"JAFFINO",slot:"E2+TE2",venue:"PRP274"},
-      {f:"VIVEK RAJPOOT",slot:"E1+TE1",venue:"PRP372"},
-      {f:"VIVEK RAJPOOT",slot:"E2+TE2",venue:"PRP372"},
-      {f:"ROHIT MATHUR",slot:"E1+TE1",venue:"PRP378"},
-      {f:"ROHIT MATHUR",slot:"E2+TE2",venue:"PRP378"},
-      {f:"ANIS FATEMA",slot:"E1+TE1",venue:"PRP379"},
-      {f:"ANIS FATEMA",slot:"E2+TE2",venue:"PRP379"},
-      {f:"DEBASHISH DASH",slot:"E1+TE1",venue:"PRP268"},
-      {f:"DEBASHISH DASH",slot:"E2+TE2",venue:"PRP268"},
-      {f:"SIDHARTH GAUTAM",slot:"E1+TE1",venue:"PRP371"},
-      {f:"SIDHARTH GAUTAM",slot:"E2+TE2",venue:"PRP371"},
-      {f:"DHANABAL R",slot:"E1+TE1",venue:"PRP275"},
-      {f:"DHANABAL R",slot:"E2+TE2",venue:"PRP275"},
-      {f:"NIMAL J KUMAR",slot:"E1+TE1",venue:"PRP465"},
-      {f:"BOOPALAN G",slot:"E2+TE2",venue:"PRP471"},
-    ],
-    lab:[
-      {f:"SUDHAKAR M S",slot:"L3+L4",venue:"SJT515"},
-      {f:"SUDHAKAR M S",slot:"L43+L44",venue:"SJT515"},
-      {f:"DEBASHISH DASH",slot:"L5+L6",venue:"SJT515"},
-      {f:"DEBASHISH DASH",slot:"L45+L46",venue:"SJT515"},
-      {f:"JAFFINO",slot:"L11+L12",venue:"SJT515"},
-      {f:"JAFFINO",slot:"L57+L58",venue:"SJT515"},
-      {f:"DHANABAL R",slot:"L13+L14",venue:"SJT515"},
-      {f:"DHANABAL R",slot:"L49+L50",venue:"SJT515"},
-      {f:"SIDHARTH GAUTAM",slot:"L15+L16",venue:"SJT515"},
-      {f:"SIDHARTH GAUTAM",slot:"L31+L32",venue:"SJT515"},
-      {f:"ROHIT MATHUR",slot:"L27+L28",venue:"SJT515"},
-      {f:"ROHIT MATHUR",slot:"L35+L36",venue:"SJT515"},
-      {f:"ANIS FATEMA",slot:"L29+L30",venue:"SJT515"},
-      {f:"ANIS FATEMA",slot:"L41+L42",venue:"SJT515"},
-      {f:"SHABEEB AHAMED K P",slot:"L1+L2",venue:"SJT515"},
-      {f:"SHABEEB AHAMED K P",slot:"L47+L48",venue:"SJT515"},
-      {f:"VIVEK RAJPOOT",slot:"L19+L20",venue:"SJT515"},
-      {f:"VIVEK RAJPOOT",slot:"L33+L34",venue:"SJT515"},
-      {f:"NIMAL J KUMAR",slot:"L39+L40",venue:"SJT515"},
-      {f:"YADVENDRA SINGH",slot:"L9+L10",venue:"SJT515"},
-      {f:"BOOPALAN G",slot:"L21+L22",venue:"SJT515"},
-      {f:"MUTHU RAJA S",slot:"L51+L52",venue:"SJT515"},
-    ]
-  },
-  BACSE202:{code:"BACSE202",name:"Database Systems",short:"data sys",color:"#0EA5E9",credits:4,
-    theory:[
-      {f:"ANBARASI M",slot:"A1+TA1",venue:"PRP267"},
-      {f:"GOVINDA K",slot:"A2+TA2",venue:"PRP267"},
-      {f:"MOHAN KUMAR P",slot:"A1+TA1",venue:"PRP268"},
-      {f:"JYOTISMITA CHAKI",slot:"A1+TA1",venue:"PRP275"},
-      {f:"POOJA CHAUDHARY",slot:"A1+TA1",venue:"PRP378"},
-      {f:"POOJA CHAUDHARY",slot:"A2+TA2",venue:"PRP378"},
-      {f:"SARITHA MURALI",slot:"A1+TA1",venue:"PRP371"},
-      {f:"SARITHA MURALI",slot:"A2+TA2",venue:"PRP371"},
-      {f:"KONATHAM SUMALATHA",slot:"A1+TA1",venue:"PRP372"},
-      {f:"KONATHAM SUMALATHA",slot:"A2+TA2",venue:"PRP372"},
-      {f:"DIVIYA M",slot:"A1+TA1",venue:"PRP464"},
-      {f:"DIVIYA M",slot:"A2+TA2",venue:"PRP464"},
-      {f:"SUDHAKAR K",slot:"A1+TA1",venue:"PRP465"},
-      {f:"SUDHAKAR K",slot:"A2+TA2",venue:"PRP465"},
-      {f:"MANOHAR KUMAR C V S S",slot:"A1+TA1",venue:"PRP568"},
-      {f:"MANOHAR KUMAR C V S S",slot:"A2+TA2",venue:"PRP568"},
-      {f:"AVISHEK NANDI",slot:"A1+TA1",venue:"PRP569"},
-      {f:"AVISHEK NANDI",slot:"A2+TA2",venue:"PRP569"},
-      {f:"SOMASUNDARAM R",slot:"A1+TA1",venue:"PRP576"},
-      {f:"SOMASUNDARAM R",slot:"A2+TA2",venue:"PRP576"},
-      {f:"KATARI BALAKRISHNA",slot:"A1+TA1",venue:"PRP670"},
-      {f:"KATARI BALAKRISHNA",slot:"A2+TA2",venue:"PRP670"},
-      {f:"LAKSHMI S",slot:"A1+TA1",venue:"PRP379"},
-      {f:"LAKSHMI S",slot:"A2+TA2",venue:"PRP379"},
-      {f:"ARPITA GHOSH",slot:"A1+TA1",venue:"PRP471"},
-      {f:"ARPITA GHOSH",slot:"A2+TA2",venue:"PRP471"},
-      {f:"VANI RAJASEKAR",slot:"A1+TA1",venue:"PRP472"},
-      {f:"VANI RAJASEKAR",slot:"A2+TA2",venue:"PRP472"},
-      {f:"KAVITHA G",slot:"A1+TA1",venue:"PRP575"},
-      {f:"KAVITHA G",slot:"A2+TA2",venue:"PRP575"},
-      {f:"JOTHIARUNA N",slot:"A1+TA1",venue:"PRP274"},
-      {f:"JOTHIARUNA N",slot:"A2+TA2",venue:"PRP274"},
-      {f:"SARASWATHI U",slot:"A2+TA2",venue:"PRP275"},
-      {f:"KALAIVANI K",slot:"A2+TA2",venue:"PRP268"},
-    ],
-    lab:[
-      {f:"KALAIVANI K",slot:"L5+L6",venue:"PRP352"},
-      {f:"ANBARASI M",slot:"L43+L44",venue:"PRP353"},
-      {f:"GOVINDA K",slot:"L9+L10",venue:"PRP347"},
-      {f:"MOHAN KUMAR P",slot:"L33+L34",venue:"PRP353"},
-      {f:"JOTHIARUNA N",slot:"L3+L4",venue:"PRP356"},
-      {f:"JOTHIARUNA N",slot:"L39+L40",venue:"PRP354"},
-      {f:"SARITHA MURALI",slot:"L21+L22",venue:"PRP356"},
-      {f:"SARITHA MURALI",slot:"L37+L38",venue:"PRP356"},
-      {f:"JYOTISMITA CHAKI",slot:"L49+L50",venue:"PRP356"},
-      {f:"KONATHAM SUMALATHA",slot:"L19+L20",venue:"PRP356"},
-      {f:"KONATHAM SUMALATHA",slot:"L49+L50",venue:"PRP233"},
-      {f:"POOJA CHAUDHARY",slot:"L9+L10",venue:"PRP356"},
-      {f:"POOJA CHAUDHARY",slot:"L41+L42",venue:"PRP136"},
-      {f:"LAKSHMI S",slot:"L19+L20",venue:"PRP354"},
-      {f:"LAKSHMI S",slot:"L39+L40",venue:"PRP356"},
-      {f:"DIVIYA M",slot:"L29+L30",venue:"PRP356"},
-      {f:"DIVIYA M",slot:"L51+L52",venue:"PRP354"},
-      {f:"SUDHAKAR K",slot:"L7+L8",venue:"SJT515"},
-      {f:"SUDHAKAR K",slot:"L37+L38",venue:"SJT515"},
-      {f:"ARPITA GHOSH",slot:"L3+L4",venue:"PRP353"},
-      {f:"ARPITA GHOSH",slot:"L49+L50",venue:"PRP347"},
-      {f:"VANI RAJASEKAR",slot:"L5+L6",venue:"PRP347"},
-      {f:"VANI RAJASEKAR",slot:"L53+L54",venue:"PRP347"},
-      {f:"MANOHAR KUMAR C V S S",slot:"L25+L26",venue:"SJT515"},
-      {f:"MANOHAR KUMAR C V S S",slot:"L53+L54",venue:"PRP354"},
-      {f:"AVISHEK NANDI",slot:"L15+L16",venue:"PRP356"},
-      {f:"AVISHEK NANDI",slot:"L53+L54",venue:"SJT515"},
-      {f:"KAVITHA G",slot:"L25+L26",venue:"PRP347"},
-      {f:"KAVITHA G",slot:"L33+L34",venue:"PRP354"},
-      {f:"SOMASUNDARAM R",slot:"L19+L20",venue:"PRP138"},
-      {f:"SOMASUNDARAM R",slot:"L35+L36",venue:"PRP356"},
-      {f:"KATARI BALAKRISHNA",slot:"L19+L20",venue:"PRP233"},
-      {f:"KATARI BALAKRISHNA",slot:"L53+L54",venue:"PRP353"},
-      {f:"SARASWATHI U",slot:"L5+L6",venue:"PRP138"},
-    ]
-  },
-  BACSE203:{code:"BACSE203",name:"Computer Networks",short:"comp net",color:"#059669",credits:4,
-    theory:[
-      {f:"MANIKANDAN G",slot:"B1+TB1",venue:"PRP268"},
-      {f:"MANIKANDAN G",slot:"B2+TB2",venue:"PRP268"},
-      {f:"SARWESH P",slot:"B1+TB1",venue:"PRP274"},
-      {f:"SARWESH P",slot:"B2+TB2",venue:"PRP274"},
-      {f:"S M FAROOQ",slot:"B1+TB1",venue:"PRP275"},
-      {f:"S M FAROOQ",slot:"B2+TB2",venue:"PRP275"},
-      {f:"BADRINATH N",slot:"B1+TB1",venue:"PRP371"},
-      {f:"BADRINATH N",slot:"B2+TB2",venue:"PRP371"},
-      {f:"PRAKASH G",slot:"B1+TB1",venue:"PRP267"},
-      {f:"PRAKASH G",slot:"B2+TB2",venue:"PRP267"},
-      {f:"RAGAVAN K",slot:"B1+TB1",venue:"PRP372"},
-      {f:"RAGAVAN K",slot:"B2+TB2",venue:"PRP372"},
-      {f:"PADMAVATHY T",slot:"B1+TB1",venue:"PRP378"},
-      {f:"PADMAVATHY T",slot:"B2+TB2",venue:"PRP378"},
-      {f:"GOPINATH M",slot:"B1+TB1",venue:"PRP464"},
-      {f:"GOPINATH M",slot:"B2+TB2",venue:"PRP464"},
-      {f:"RAJAN SHRIVASTAVA",slot:"B1+TB1",venue:"PRP465"},
-      {f:"RAJAN SHRIVASTAVA",slot:"B2+TB2",venue:"PRP465"},
-      {f:"RAKHI MOL V",slot:"B1+TB1",venue:"PRP471"},
-      {f:"RAKHI MOL V",slot:"B2+TB2",venue:"PRP471"},
-      {f:"JIM SOLOMON RAJA D",slot:"B1+TB1",venue:"PRP472"},
-      {f:"JIM SOLOMON RAJA D",slot:"B2+TB2",venue:"PRP472"},
-      {f:"RAJASEKAR V R",slot:"B1+TB1",venue:"PRP568"},
-      {f:"RAJASEKAR V R",slot:"B2+TB2",venue:"PRP568"},
-      {f:"THIRUVENKADAM T",slot:"B1+TB1",venue:"PRP575"},
-      {f:"THIRUVENKADAM T",slot:"B2+TB2",venue:"PRP575"},
-      {f:"SARANYA P",slot:"B1+TB1",venue:"PRP379"},
-      {f:"SARANYA P",slot:"B2+TB2",venue:"PRP379"},
-      {f:"ERAPANENI GAYATRI",slot:"B1+TB1",venue:"PRP569"},
-      {f:"ERAPANENI GAYATRI",slot:"B2+TB2",venue:"PRP569"},
-      {f:"CHANDRA MOHAN B",slot:"B2+TB2",venue:"PRP576"},
-      {f:"ILANTHENRAL K P S K",slot:"B1+TB1",venue:"PRP576"},
-      {f:"VIMALA DEVI K",slot:"B1+TB1",venue:"PRP670"},
-      {f:"THANDEESWARAN R",slot:"B2+TB2",venue:"PRP670"},
-    ],
-    lab:[
-      {f:"THIRUVENKADAM T",slot:"L13+L14",venue:"PRP347"},
-      {f:"THIRUVENKADAM T",slot:"L43+L44",venue:"PRP354"},
-      {f:"ERAPANENI GAYATRI",slot:"L1+L2",venue:"PRP137"},
-      {f:"ERAPANENI GAYATRI",slot:"L55+L56",venue:"PRP137"},
-      {f:"RAJASEKAR V R",slot:"L9+L10",venue:"PRP352"},
-      {f:"RAJASEKAR V R",slot:"L53+L54",venue:"PRP356"},
-      {f:"JIM SOLOMON RAJA D",slot:"L25+L26",venue:"PRP137"},
-      {f:"JIM SOLOMON RAJA D",slot:"L53+L54",venue:"PRP137"},
-      {f:"RAKHI MOL V",slot:"L15+L16",venue:"PRP347"},
-      {f:"RAKHI MOL V",slot:"L55+L56",venue:"PRP347"},
-      {f:"RAJAN SHRIVASTAVA",slot:"L25+L26",venue:"PRP353"},
-      {f:"RAJAN SHRIVASTAVA",slot:"L57+L58",venue:"PRP354"},
-      {f:"GOPINATH M",slot:"L25+L26",venue:"PRP356"},
-      {f:"GOPINATH M",slot:"L31+L32",venue:"PRP354"},
-      {f:"SARANYA P",slot:"L27+L28",venue:"PRP136"},
-      {f:"SARANYA P",slot:"L53+L54",venue:"PRP138"},
-      {f:"PADMAVATHY T",slot:"L25+L26",venue:"PRP352"},
-      {f:"PADMAVATHY T",slot:"L31+L32",venue:"PRP138"},
-      {f:"RAGAVAN K",slot:"L15+L16",venue:"PRP352"},
-      {f:"RAGAVAN K",slot:"L45+L46",venue:"PRP352"},
-      {f:"THANDEESWARAN R",slot:"L3+L4",venue:"PRP352"},
-      {f:"BADRINATH N",slot:"L13+L14",venue:"PRP353"},
-      {f:"BADRINATH N",slot:"L43+L44",venue:"PRP356"},
-      {f:"S M FAROOQ",slot:"L13+L14",venue:"PRP137"},
-      {f:"S M FAROOQ",slot:"L39+L40",venue:"PRP352"},
-      {f:"SARWESH P",slot:"L15+L16",venue:"PRP137"},
-      {f:"SARWESH P",slot:"L43+L44",venue:"PRP352"},
-      {f:"PRAKASH G",slot:"L15+L16",venue:"PRP135"},
-      {f:"PRAKASH G",slot:"L45+L46",venue:"PRP138"},
-      {f:"MANIKANDAN G",slot:"L29+L30",venue:"PRP352"},
-      {f:"MANIKANDAN G",slot:"L51+L52",venue:"PRP352"},
-      {f:"VIMALA DEVI K",slot:"L33+L34",venue:"PRP352"},
-      {f:"CHANDRA MOHAN B",slot:"L13+L14",venue:"PRP352"},
-      {f:"ILANTHENRAL K P S K",slot:"L49+L50",venue:"PRP352"},
-    ]
-  },
-  BAMAT207:{code:"BAMAT207",name:"Prob & Statistics",short:"prob",color:"#DC2626",credits:4,
-    theory:[
-      {f:"YAMUNA M",slot:"G1+TG1",venue:"SJT709"},
-      {f:"YAMUNA M",slot:"G2+TG2",venue:"SJT709"},
-      {f:"MUBASHIR UNNISSA M",slot:"G1+TG1",venue:"SJT627"},
-      {f:"MUBASHIR UNNISSA M",slot:"F2+TF2",venue:"PRP575"},
-      {f:"JUHI BAROI",slot:"G2+TG2",venue:"SJT715"},
-      {f:"JUHI BAROI",slot:"F1+TF1",venue:"PRP576"},
-      {f:"KALPANA PRIYA D",slot:"G1+TG1",venue:"SJT619"},
-      {f:"KALPANA PRIYA D",slot:"F2+TF2",venue:"PRP378"},
-      {f:"PALLAVI MISHRA",slot:"G2+TG2",venue:"SJT707"},
-      {f:"PALLAVI MISHRA",slot:"F1+TF1",venue:"PRP378"},
-      {f:"JITENDRA KUMAR",slot:"F1+TF1",venue:"PRP267"},
-      {f:"JITENDRA KUMAR",slot:"F2+TF2",venue:"PRP267"},
-      {f:"MURUGAN V",slot:"F1+TF1",venue:"PRP268"},
-      {f:"MURUGAN V",slot:"F2+TF2",venue:"PRP268"},
-      {f:"CLEMENT J",slot:"F1+TF1",venue:"PRP274"},
-      {f:"CLEMENT J",slot:"F2+TF2",venue:"PRP274"},
-      {f:"PRIYA DAS",slot:"F1+TF1",venue:"PRP275"},
-      {f:"PRIYA DAS",slot:"F2+TF2",venue:"PRP275"},
-      {f:"BALAJI S",slot:"F1+TF1",venue:"PRP371"},
-      {f:"BALAJI S",slot:"F2+TF2",venue:"PRP371"},
-      {f:"RACHNA BHATIA",slot:"F1+TF1",venue:"PRP372"},
-      {f:"RACHNA BHATIA",slot:"F2+TF2",venue:"PRP372"},
-      {f:"TABINDA NAHID",slot:"F1+TF1",venue:"PRP379"},
-      {f:"TABINDA NAHID",slot:"F2+TF2",venue:"PRP379"},
-      {f:"ABDUL HAQ",slot:"F1+TF1",venue:"PRP464"},
-      {f:"ABDUL HAQ",slot:"F2+TF2",venue:"PRP464"},
-      {f:"MONICA C",slot:"F1+TF1",venue:"PRP465"},
-      {f:"MONICA C",slot:"F2+TF2",venue:"PRP465"},
-      {f:"GOWSALYA M",slot:"F1+TF1",venue:"PRP471"},
-      {f:"GOWSALYA M",slot:"F2+TF2",venue:"PRP471"},
-      {f:"REENU RANI",slot:"F1+TF1",venue:"PRP472"},
-      {f:"REENU RANI",slot:"F2+TF2",venue:"PRP472"},
-      {f:"VEERAMANI S",slot:"F1+TF1",venue:"PRP568"},
-      {f:"VEERAMANI S",slot:"F2+TF2",venue:"PRP568"},
-      {f:"SUJASREE M",slot:"F1+TF1",venue:"PRP569"},
-      {f:"SUJASREE M",slot:"F2+TF2",venue:"PRP569"},
-      {f:"RAMU GEDDAVALASA",slot:"F1+TF1",venue:"PRP575"},
-      {f:"RAMU GEDDAVALASA",slot:"F2+TF2",venue:"PRP670"},
-      {f:"PADMA R",slot:"F1+TF1",venue:"PRP670"},
-      {f:"PADMA R",slot:"F2+TF2",venue:"PRP576"},
-      {f:"DINESH KUMAR S",slot:"F1+TF1",venue:"SMV101"},
-      {f:"VIJAYAKUMAR M",slot:"F2+TF2",venue:"SMV101"},
-    ],
-    lab:[
-      {f:"YAMUNA M",slot:"L29+L30",venue:"PRP450"},
-      {f:"YAMUNA M",slot:"L45+L46",venue:"PRP446"},
-      {f:"JITENDRA KUMAR",slot:"L11+L12",venue:"PRP446"},
-      {f:"JITENDRA KUMAR",slot:"L55+L56",venue:"PRP446"},
-      {f:"MURUGAN V",slot:"L25+L26",venue:"PRP446"},
-      {f:"MURUGAN V",slot:"L49+L50",venue:"PRP446"},
-      {f:"CLEMENT J",slot:"L5+L6",venue:"PRP446"},
-      {f:"CLEMENT J",slot:"L53+L54",venue:"PRP446"},
-      {f:"PRIYA DAS",slot:"L9+L10",venue:"PRP446"},
-      {f:"PRIYA DAS",slot:"L51+L52",venue:"PRP446"},
-      {f:"JUHI BAROI",slot:"L25+L26",venue:"PRP119"},
-      {f:"JUHI BAROI",slot:"L49+L50",venue:"PRP119"},
-      {f:"BALAJI S",slot:"L19+L20",venue:"PRP446"},
-      {f:"BALAJI S",slot:"L41+L42",venue:"PRP446"},
-      {f:"RACHNA BHATIA",slot:"L21+L22",venue:"PRP446"},
-      {f:"RACHNA BHATIA",slot:"L35+L36",venue:"PRP446"},
-      {f:"KALPANA PRIYA D",slot:"L15+L16",venue:"PRP446"},
-      {f:"KALPANA PRIYA D",slot:"L51+L52",venue:"PRP450"},
-      {f:"PALLAVI MISHRA",slot:"L23+L24",venue:"PRP446"},
-      {f:"PALLAVI MISHRA",slot:"L49+L50",venue:"PRP450"},
-      {f:"TABINDA NAHID",slot:"L21+L22",venue:"PRP450"},
-      {f:"TABINDA NAHID",slot:"L37+L38",venue:"PRP446"},
-      {f:"ABDUL HAQ",slot:"L3+L4",venue:"PRP446"},
-      {f:"ABDUL HAQ",slot:"L39+L40",venue:"PRP446"},
-      {f:"MONICA C",slot:"L7+L8",venue:"PRP446"},
-      {f:"MONICA C",slot:"L51+L52",venue:"PRP445"},
-      {f:"GOWSALYA M",slot:"L25+L26",venue:"PRP450"},
-      {f:"GOWSALYA M",slot:"L41+L42",venue:"PRP450"},
-      {f:"SUJASREE M",slot:"L11+L12",venue:"PRP450"},
-      {f:"SUJASREE M",slot:"L35+L36",venue:"PRP450"},
-      {f:"REENU RANI",slot:"L5+L6",venue:"PRP450"},
-      {f:"REENU RANI",slot:"L53+L54",venue:"PRP450"},
-      {f:"VEERAMANI S",slot:"L23+L24",venue:"PRP450"},
-      {f:"VEERAMANI S",slot:"L35+L36",venue:"PRP119"},
-      {f:"RAMU GEDDAVALASA",slot:"L19+L20",venue:"PRP119"},
-      {f:"RAMU GEDDAVALASA",slot:"L41+L42",venue:"PRP445"},
-      {f:"PADMA R",slot:"L7+L8",venue:"PRP450"},
-      {f:"PADMA R",slot:"L51+L52",venue:"PRP119"},
-      {f:"MUBASHIR UNNISSA M",slot:"L29+L30",venue:"PRP446"},
-      {f:"MUBASHIR UNNISSA M",slot:"L37+L38",venue:"PRP119"},
-      {f:"DINESH KUMAR S",slot:"L39+L40",venue:"PRP450"},
-      {f:"VIJAYAKUMAR M",slot:"L9+L10",venue:"PRP450"},
-    ]
-  },
-  BACSE102:{code:"BACSE102",name:"Java Programming",short:"java",color:"#EA580C",credits:2,
-    theory:[],
-    lab:[
-      {f:"VINILA JINNY",slot:"L3+L4+L21+L22",venue:"PRP347"},
-      {f:"VINILA JINNY",slot:"L31+L32+L43+L44",venue:"PRP347"},
-      {f:"SATISH C.J",slot:"L9+L10+L21+L22",venue:"PRP353"},
-      {f:"BALASUBRAMANIAN V",slot:"L15+L16+L21+L22",venue:"PRP354"},
-      {f:"PRIYA G",slot:"L19+L20+L27+L28",venue:"PRP347"},
-      {f:"JABANJALIN HILDA J",slot:"L3+L4+L13+L14",venue:"PRP136"},
-      {f:"JABANJALIN HILDA J",slot:"L33+L34+L45+L46",venue:"PRP136"},
-      {f:"DEEPIKAA S",slot:"L3+L4+L29+L30",venue:"PRP354"},
-      {f:"DEEPIKAA S",slot:"L37+L38+L49+L50",venue:"PRP354"},
-      {f:"RAJARAJAN G",slot:"L9+L10+L25+L26",venue:"PRP354"},
-      {f:"RAJARAJAN G",slot:"L45+L46+L55+L56",venue:"PRP354"},
-      {f:"KALAIVANI K",slot:"L13+L14+L27+L28",venue:"PRP354"},
-      {f:"KALAIVANI K",slot:"L45+L46+L55+L56",venue:"PRP356"},
-      {f:"PARTHASARATHY G",slot:"L5+L6+L19+L20",venue:"PRP353"},
-      {f:"PARTHASARATHY G",slot:"L15+L16+L27+L28",venue:"PRP353"},
-      {f:"SOMASUNDARAM S K",slot:"L3+L4+L19+L20",venue:"PRP137"},
-      {f:"SOMASUNDARAM S K",slot:"L37+L38+L55+L56",venue:"PRP136"},
-      {f:"KARTHIK K",slot:"L7+L8+L21+L22",venue:"PRP136"},
-      {f:"KARTHIK K",slot:"L43+L44+L53+L54",venue:"PRP136"},
-      {f:"GUNASEKAR M",slot:"L31+L32+L49+L50",venue:"PRP136"},
-      {f:"GUNASEKAR M",slot:"L39+L40+L57+L58",venue:"PRP136"},
-      {f:"UMA PRIYA D",slot:"L5+L6+L15+L16",venue:"PRP136"},
-      {f:"UMA PRIYA D",slot:"L9+L10+L25+L26",venue:"PRP136"},
-      {f:"JAISANKAR N",slot:"L33+L34+L37+L38",venue:"PRP347"},
-      {f:"SIVAKUMAR T",slot:"L7+L8+L29+L30",venue:"PRP347"},
-      {f:"SIVAKUMAR T",slot:"L31+L32+L53+L54",venue:"PRP352"},
-      {f:"SINTHUJA M",slot:"L19+L20+L29+L30",venue:"PRP136"},
-      {f:"BALA KRISHNAN R",slot:"L35+L36+L45+L46",venue:"PRP347"},
-      {f:"BALA KRISHNAN R",slot:"L39+L40+L51+L52",venue:"PRP347"},
-      {f:"VIVEK D",slot:"L7+L8+L29+L30",venue:"PRP353"},
-      {f:"VIVEK D",slot:"L45+L46+L57+L58",venue:"PRP353"},
-      {f:"RANJITH KUMAR M",slot:"L31+L32+L49+L50",venue:"PRP353"},
-      {f:"RANJITH KUMAR M",slot:"L39+L40+L55+L56",venue:"PRP353"},
-      {f:"ARUN KUMAR G",slot:"L37+L38+L51+L52",venue:"PRP353"},
-    ]
-  },
-  QQ:{code:"QQ",name:"QQ Skills",short:"skills",color:"#7C2D8F",credits:1,
-    isSelector:true,selectorKey:"QQ",
-    selectorOptions:["TIME","ETHNUS","FACE","SIXPHRASE"],
-    theory:[
-      {f:"TIME",slot:"D1+TD1",venue:"PRP268"},{f:"TIME",slot:"D2+TD2",venue:"PRP267"},
-      {f:"TIME",slot:"D1+TD1",venue:"PRP274"},{f:"TIME",slot:"D2+TD2",venue:"PRP274"},
-      {f:"TIME",slot:"D1+TD1",venue:"PRP267"},{f:"TIME",slot:"D2+TD2",venue:"PRP268"},
-      {f:"TIME",slot:"D1+TD1",venue:"PRP378"},{f:"TIME",slot:"D2+TD2",venue:"PRP378"},
-      {f:"TIME",slot:"E1+TE1",venue:"SMV116"},{f:"TIME",slot:"E2+TE2",venue:"SMV101"},
-      {f:"TIME",slot:"E1+TE1",venue:"TT204"},{f:"TIME",slot:"E2+TE2",venue:"TT204"},
-      {f:"ETHNUS",slot:"D1+TD1",venue:"PRP372"},{f:"ETHNUS",slot:"D2+TD2",venue:"PRP372"},
-      {f:"ETHNUS",slot:"D1+TD1",venue:"PRP371"},{f:"ETHNUS",slot:"D2+TD2",venue:"PRP371"},
-      {f:"ETHNUS",slot:"D1+TD1",venue:"PRP275"},{f:"ETHNUS",slot:"D2+TD2",venue:"PRP275"},
-      {f:"ETHNUS",slot:"E1+TE1",venue:"MB211"},{f:"ETHNUS",slot:"E2+TE2",venue:"MB211"},
-      {f:"ETHNUS",slot:"E1+TE1",venue:"SJT222"},{f:"ETHNUS",slot:"E2+TE2",venue:"SJT222"},
-      {f:"FACE",slot:"D1+TD1",venue:"PRP464"},{f:"FACE",slot:"D2+TD2",venue:"PRP464"},
-      {f:"FACE",slot:"D1+TD1",venue:"PRP472"},{f:"FACE",slot:"D2+TD2",venue:"PRP472"},
-      {f:"FACE",slot:"D1+TD1",venue:"PRP465"},{f:"FACE",slot:"D2+TD2",venue:"PRP465"},
-      {f:"FACE",slot:"E1+TE1",venue:"MB212"},{f:"FACE",slot:"E2+TE2",venue:"MB212"},
-      {f:"FACE",slot:"E1+TE1",venue:"SJT215"},{f:"FACE",slot:"E2+TE2",venue:"SJT215"},
-      {f:"SIXPHRASE",slot:"D1+TD1",venue:"PRP576"},{f:"SIXPHRASE",slot:"D2+TD2",venue:"PRP576"},
-      {f:"SIXPHRASE",slot:"D1+TD1",venue:"PRP568"},{f:"SIXPHRASE",slot:"D2+TD2",venue:"PRP568"},
-      {f:"SIXPHRASE",slot:"D1+TD1",venue:"PRP575"},{f:"SIXPHRASE",slot:"D2+TD2",venue:"PRP575"},
-      {f:"SIXPHRASE",slot:"E1+TE1",venue:"SJT221"},{f:"SIXPHRASE",slot:"E2+TE2",venue:"SJT221"},
-      {f:"SIXPHRASE",slot:"E1+TE1",venue:"PRP426"},{f:"SIXPHRASE",slot:"E2+TE2",venue:"PRP426"},
+      {f:"ANITHA E",slot:"C1+TC1+TCC1",venue:"PRP323"},
+      {f:"ANITHA E",slot:"C2+TC2+TCC2",venue:"PRP323"},
+      {f:"SATHIYA KUMAR C",slot:"C1+TC1+TCC1",venue:"PRP334"},
+      {f:"JAYALAKSHMI M",slot:"C1+TC1+TCC1",venue:"PRP224"},
+      {f:"ARUMUGA ARUN R",slot:"C1+TC1+TCC1",venue:"PRP322"},
+      {f:"ARUMUGA ARUN R",slot:"C2+TC2+TCC2",venue:"PRP322"},
+      {f:"DEBI PRASANNA ACHARJYA",slot:"C2+TC2+TCC2",venue:"PRP313"},
+      {f:"BOOMINATHAN P",slot:"C1+TC1+TCC1",venue:"PRP304"},
+      {f:"NAGARAJA RAO A",slot:"C2+TC2+TCC2",venue:"PRP304"},
+      {f:"RAJKUMAR S",slot:"C1+TC1+TCC1",venue:"PRP306"},
+      {f:"ANAND BIHARI",slot:"C1+TC1+TCC1",venue:"PRP308"},
+      {f:"ANAND BIHARI",slot:"C2+TC2+TCC2",venue:"PRP308"},
+      {f:"KALAIVANI K",slot:"C1+TC1+TCC1",venue:"PRP309"},
+      {f:"KALAIVANI K",slot:"C2+TC2+TCC2",venue:"PRP309"},
+      {f:"PARTHASARATHY G",slot:"C1+TC1+TCC1",venue:"PRP313"},
+      {f:"PARTHASARATHY G",slot:"C2+TC2+TCC2",venue:"PRP339"},
+      {f:"SATHYA K",slot:"C1+TC1+TCC1",venue:"PRP318"},
+      {f:"SATHYA K",slot:"C2+TC2+TCC2",venue:"PRP318"},
+      {f:"BASKARAN P",slot:"C1+TC1+TCC1",venue:"PRP319"},
+      {f:"BASKARAN P",slot:"C2+TC2+TCC2",venue:"PRP319"},
+      {f:"UMA PRIYA D",slot:"C1+TC1+TCC1",venue:"PRP320"},
+      {f:"UMA PRIYA D",slot:"C2+TC2+TCC2",venue:"PRP320"},
+      {f:"GUNAVATHI C",slot:"C2+TC2+TCC2",venue:"PRP306"},
+      {f:"RAJARAJAN G",slot:"C2+TC2+TCC2",venue:"PRP334"},
+      {f:"PRAKASH M",slot:"C1+TC1+TCC1",venue:"PRP332"},
+      {f:"KRISHNA RANI SAMAL K",slot:"C2+TC2+TCC2",venue:"PRP332"},
+      {f:"ISLABUDEEN M",slot:"C2+TC2+TCC2",venue:"PRP333"},
+      {f:"HASHIDA HAIDROS RAHIMA MANZIL",slot:"C1+TC1+TCC1",venue:"PRP339"},
+      {f:"MANIVANNAN P",slot:"C1+TC1+TCC1",venue:"PRP411"},
+      {f:"SOMASUNDARAM S K",slot:"C1+TC1+TCC1",venue:"PRP333"},
+      {f:"NIVITHA K",slot:"C2+TC2+TCC2",venue:"PRP414"},
+      {f:"NIVITHA K",slot:"C1+TC1+TCC1",venue:"PRP424"},
+      {f:"KAPIL KUMAR SHARMA",slot:"C2+TC2+TCC2",venue:"PRP411"},
+      {f:"SHALINI L",slot:"C2+TC2+TCC2",venue:"PRP224"},
     ],
     lab:[]
   },
-  HSM:{code:"HSM",name:"HSM Elective",short:"HSM",color:"#0891B2",credits:3,
-    isSelector:true,selectorKey:"HSM",
-    selectorOptions:["BAHUM109","BAHUM110","BAHUM111","BAHUM112"],
-    selectorNames:{"BAHUM109":"Sociology","BAHUM110":"Sustainability","BAHUM111":"Psychology I","BAHUM112":"Psychology II"},
-    theory:{
-      "BAHUM109":[
-        {f:"SREYA SEN",slot:"G2+TG2",venue:"SJT602A"},
-        {f:"KUBENDRAN A",slot:"C2+TC2",venue:"TT621"},
-        {f:"BALAMURUGAN J",slot:"G1+TG1",venue:"PRP465"},
-        {f:"RAHUL SHUKLA",slot:"C2+TC2",venue:"SJT709"},
-        {f:"ABHIJIT DASGUPTA",slot:"C2+TC2",venue:"SJT607"},
-      ],
-      "BAHUM110":[
-        {f:"RASHMI M",slot:"C2+TC2",venue:"PRP772"},
-        {f:"RASHMI M",slot:"G2+TG2",venue:"PRP575"},
-        {f:"RASHMI M",slot:"G1+TG1",venue:"PRP575"},
-        {f:"RAJAMEENAKSHI J",slot:"G2+TG2",venue:"TT204"},
-        {f:"SREYA SEN",slot:"G1+TG1",venue:"PRP378"},
-        {f:"SREYA SEN",slot:"C1+TC1",venue:"PRP378"},
-        {f:"RAHUL SHUKLA",slot:"G2+TG2",venue:"SJT222"},
-        {f:"RAHUL SHUKLA",slot:"G1+TG1",venue:"PRP569"},
-      ],
-      "BAHUM111":[
-        {f:"TANU KUKREJA",slot:"C2+TC2",venue:"TT204"},
-        {f:"JENEEFER JEBA RAJA SELVI N",slot:"G1+TG1",venue:"SJT324"},
-        {f:"TONY P JOSE",slot:"G2+TG2",venue:"SJT617"},
-        {f:"TONY P JOSE",slot:"G1+TG1",venue:"PRP471"},
-        {f:"MOHD OWAIS KHAN",slot:"G1+TG1",venue:"PRP568"},
-        {f:"MOHD OWAIS KHAN",slot:"C2+TC2",venue:"SJT619"},
-      ],
-      "BAHUM112":[
-        {f:"TONY P JOSE",slot:"C2+TC2",venue:"SJT521"},
-        {f:"BHUVANESWARI M",slot:"G2+TG2",venue:"SMV121"},
-        {f:"BHUVANESWARI M",slot:"G1+TG1",venue:"GDNG07"},
-      ]
-    },
-    lab:[]
+  SE:{code:"SE",name:"Software Engineering",short:"se",color:"#0EA5E9",credits:4,
+    theory:[
+      {f:"JUSTIN GOPINATH A",slot:"E2+TE2",venue:"PRP308"},
+      {f:"JUSTIN GOPINATH A",slot:"E1+TE1",venue:"PRP308"},
+      {f:"DEVIPRIYA A",slot:"E2+TE2",venue:"PRP319"},
+      {f:"DEVIPRIYA A",slot:"E1+TE1",venue:"PRP319"},
+      {f:"SWATHI J.N",slot:"E1+TE1",venue:"PRP224"},
+      {f:"SWATHI J.N",slot:"E2+TE2",venue:"PRP224"},
+      {f:"ARCHANA T",slot:"E1+TE1",venue:"PRP304"},
+      {f:"ARCHANA T",slot:"E2+TE2",venue:"PRP304"},
+      {f:"JYOTISMITA CHAKI",slot:"E1+TE1",venue:"PRP306"},
+      {f:"JYOTISMITA CHAKI",slot:"E2+TE2",venue:"PRP306"},
+      {f:"MADHAN E S",slot:"E2+TE2",venue:"PRP309"},
+      {f:"MADHAN E S",slot:"E1+TE1",venue:"PRP309"},
+      {f:"SIVAKUMAR V",slot:"E2+TE2",venue:"PRP313"},
+      {f:"SIVAKUMAR V",slot:"E1+TE1",venue:"PRP313"},
+      {f:"PRIYANKA N",slot:"E1+TE1",venue:"PRP318"},
+      {f:"PRIYANKA N",slot:"E2+TE2",venue:"PRP318"},
+      {f:"THANUJA R",slot:"E1+TE1",venue:"PRP320"},
+      {f:"THANUJA R",slot:"E2+TE2",venue:"PRP320"},
+      {f:"SIVAPRAKASH S",slot:"E1+TE1",venue:"PRP322"},
+      {f:"SIVAPRAKASH S",slot:"E2+TE2",venue:"PRP322"},
+      {f:"ARUNKUMAR S",slot:"E1+TE1",venue:"PRP323"},
+      {f:"ARUNKUMAR S",slot:"E2+TE2",venue:"PRP323"},
+      {f:"DEEPAK RAJ D M",slot:"E1+TE1",venue:"PRP411"},
+      {f:"DEEPAK RAJ D M",slot:"E2+TE2",venue:"PRP411"},
+      {f:"MADIAJAGAN M",slot:"E2+TE2",venue:"PRP414"},
+      {f:"LOKESH KUMAR R",slot:"E1+TE1",venue:"PRP332"},
+      {f:"PEREPI RAJARAJESWARI",slot:"E2+TE2",venue:"PRP332"},
+      {f:"JAFAR ALI IBRAHIM S",slot:"E2+TE2",venue:"PRP333"},
+      {f:"BASKARAN P",slot:"E1+TE1",venue:"PRP334"},
+      {f:"MARGRET ANOUNCIA S",slot:"E1+TE1",venue:"PRP333"},
+      {f:"SHASHANK MOULI SATAPATHY",slot:"E1+TE1",venue:"PRP330"},
+      {f:"SAMRIDDHI SARKAR",slot:"E1+TE1",venue:"PRP339"},
+      {f:"SAMRIDDHI SARKAR",slot:"E2+TE2",venue:"PRP339"},
+      {f:"KUMARESAN A",slot:"E2+TE2",venue:"PRP334"},
+      {f:"PRABHU J",slot:"G1+TG1",venue:"SJT215"},
+      {f:"PRABHU J",slot:"G2+TG2",venue:"SJT224"},
+      {f:"SUJATHA R",slot:"G1+TG1",venue:"SJT710"},
+      {f:"SUJATHA R",slot:"G2+TG2",venue:"SJT712"},
+      {f:"BHAVANI S",slot:"G1+TG1",venue:"SJT709"},
+    ],
+    lab:[
+      {f:"SHASHANK MOULI SATAPATHY",slot:"L55+L56",venue:"PRP353"},
+      {f:"SWATHI J.N",slot:"L15+L16",venue:"PRP353"},
+      {f:"SWATHI J.N",slot:"L33+L34",venue:"PRP353"},
+      {f:"ARCHANA T",slot:"L1+L2",venue:"PRP353"},
+      {f:"ARCHANA T",slot:"L45+L46",venue:"PRP353"},
+      {f:"JYOTISMITA CHAKI",slot:"L5+L6",venue:"PRP353"},
+      {f:"JYOTISMITA CHAKI",slot:"L57+L58",venue:"PRP347"},
+      {f:"MADIAJAGAN M",slot:"L9+L10",venue:"PRP353"},
+      {f:"LOKESH KUMAR R",slot:"L53+L54",venue:"PRP353"},
+      {f:"JUSTIN GOPINATH A",slot:"L11+L12",venue:"PRP353"},
+      {f:"JUSTIN GOPINATH A",slot:"L45+L46",venue:"PRP347"},
+      {f:"MARGRET ANOUNCIA S",slot:"L43+L44",venue:"PRP353"},
+      {f:"MADHAN E S",slot:"L27+L28",venue:"PRP353"},
+      {f:"MADHAN E S",slot:"L31+L32",venue:"PRP353"},
+      {f:"PEREPI RAJARAJESWARI",slot:"L21+L22",venue:"PRP347"},
+      {f:"JAFAR ALI IBRAHIM S",slot:"L7+L8",venue:"PRP353"},
+      {f:"KUMARESAN A",slot:"L23+L24",venue:"PRP347"},
+      {f:"SIVAKUMAR V",slot:"L3+L4",venue:"PRP347"},
+      {f:"SIVAKUMAR V",slot:"L31+L32",venue:"PRP347"},
+      {f:"BASKARAN P",slot:"L33+L34",venue:"PRP347"},
+      {f:"PRIYANKA N",slot:"L13+L14",venue:"PRP347"},
+      {f:"PRIYANKA N",slot:"L41+L42",venue:"PRP353"},
+      {f:"SAMRIDDHI SARKAR",slot:"L5+L6",venue:"PRP347"},
+      {f:"SAMRIDDHI SARKAR",slot:"L35+L36",venue:"PRP347"},
+      {f:"ARUNKUMAR S",slot:"L15+L16",venue:"PRP347"},
+      {f:"ARUNKUMAR S",slot:"L49+L50",venue:"PRP347"},
+      {f:"DEEPAK RAJ D M",slot:"L11+L12",venue:"PRP347"},
+      {f:"DEEPAK RAJ D M",slot:"L47+L48",venue:"PRP347"},
+      {f:"DEVIPRIYA A",slot:"L49+L50",venue:"PRP353"},
+      {f:"DEVIPRIYA A",slot:"L13+L14",venue:"PRP655"},
+      {f:"SIVAPRAKASH S",slot:"L43+L44",venue:"PRP655"},
+      {f:"SIVAPRAKASH S",slot:"L19+L20",venue:"PRP655"},
+      {f:"THANUJA R",slot:"L29+L30",venue:"PRP347"},
+      {f:"THANUJA R",slot:"L47+L48",venue:"PRP137"},
+      {f:"PRABHU J",slot:"L49+L50",venue:"SJT219"},
+      {f:"PRABHU J",slot:"L3+L4",venue:"SJT219"},
+      {f:"SUJATHA R",slot:"L33+L34",venue:"SJT219"},
+      {f:"SUJATHA R",slot:"L29+L30",venue:"SJT219"},
+      {f:"BHAVANI S",slot:"L39+L40",venue:"SJT121"},
+    ]
   },
-  LANG:{code:"LANG",name:"Language",short:"lang",color:"#BE185D",credits:2,
-    isSelector:true,selectorKey:"LANG",
-    selectorOptions:["Spanish","German"],
-    selectorNames:{"Spanish":"Spanish","German":"German"},
-    theory:{
-      "Spanish":[
-        {f:"NUPUR MANASI",slot:"TDD2",venue:"SJT105"},
-        {f:"BAISHALI CHOUDHURI",slot:"TAA1",venue:"SJT127"},
-        {f:"BAISHALI CHOUDHURI",slot:"TG2",venue:"SJT205"},
-        {f:"ATUL KUMAR",slot:"TBB2",venue:"SJT112"},
-        {f:"SHILPI GUPTA",slot:"TCC1",venue:"SJT115"},
-        {f:"SABYASACHI MISHRA",slot:"TCC1",venue:"SJT118"},
-        {f:"GAURAV SUSHANT",slot:"TCC2",venue:"SJT113"},
-      ],
-      "German":[
-        {f:"DHANANJAY KUMAR",slot:"TBB2",venue:"SJT105"},
-        {f:"DHANANJAY KUMAR",slot:"TG2",venue:"TT404"},
-        {f:"ARATI KUMARI",slot:"TAA2",venue:"SJT124"},
-        {f:"ADAIKALAM ARULANANDAM",slot:"TCC1",venue:"SJT114"},
-        {f:"ADAIKALAM ARULANANDAM",slot:"TAA1",venue:"SJT201"},
-        {f:"ABHIJIT KR DARBEY",slot:"TDD2",venue:"SJT113"},
-        {f:"AMIT KUMAR SAINI",slot:"TCC1",venue:"SJT113"},
-        {f:"AMIT KUMAR SAINI",slot:"TE1",venue:"SJT508"},
-      ]
-    },
-    lab:{
-      "Spanish":[
-        {f:"BAISHALI CHOUDHURI",slot:"L13+L14",venue:"TT318"},
-        {f:"BAISHALI CHOUDHURI",slot:"L53+L54",venue:"PRP555"},
-        {f:"NUPUR MANASI",slot:"L19+L20",venue:"PRP555"},
-        {f:"ATUL KUMAR",slot:"L9+L10",venue:"PRP555"},
-        {f:"SHILPI GUPTA",slot:"L51+L52",venue:"PRP555"},
-        {f:"SABYASACHI MISHRA",slot:"L57+L58",venue:"PRP555"},
-        {f:"GAURAV SUSHANT",slot:"L3+L4",venue:"PRP555"},
-      ],
-      "German":[
-        {f:"DHANANJAY KUMAR",slot:"L1+L2",venue:"PRP555"},
-        {f:"DHANANJAY KUMAR",slot:"L15+L16",venue:"TT116"},
-        {f:"ARATI KUMARI",slot:"L15+L16",venue:"PRP555"},
-        {f:"ARATI KUMARI",slot:"L21+L22",venue:"PRP555"},
-        {f:"ADAIKALAM ARULANANDAM",slot:"L39+L40",venue:"PRP555"},
-        {f:"ADAIKALAM ARULANANDAM",slot:"L55+L56",venue:"PRP555"},
-        {f:"ABHIJIT KR DARBEY",slot:"L5+L6",venue:"PRP555"},
-        {f:"ABHIJIT KR DARBEY",slot:"L35+L36",venue:"TT318"},
-        {f:"AMIT KUMAR SAINI",slot:"L21+L22",venue:"PRP555"},
-        {f:"AMIT KUMAR SAINI",slot:"L41+L42",venue:"PRP555"},
-        {f:"AMIT KUMAR SAINI",slot:"L47+L48",venue:"PRP555"},
-      ]
-    }
+  AIML:{code:"AIML",name:"Fundamentals of AIML",short:"aiml",color:"#059669",credits:4,
+    theory:[
+      {f:"MONASH P",slot:"G2+TG2",venue:"PRP308"},
+      {f:"MONASH P",slot:"G1+TG1",venue:"PRP308"},
+      {f:"CHELLATAMILAN T",slot:"G2+TG2",venue:"PRP313"},
+      {f:"CHELLATAMILAN T",slot:"G1+TG1",venue:"PRP313"},
+      {f:"KAUSER AHMED P",slot:"G2+TG2",venue:"PRP224"},
+      {f:"KAUSER AHMED P",slot:"G1+TG1",venue:"PRP224"},
+      {f:"DEGA NAGARAJU",slot:"G2+TG2",venue:"PRP304"},
+      {f:"DEGA NAGARAJU",slot:"G1+TG1",venue:"PRP304"},
+      {f:"EBENEZER JULIET S",slot:"G2+TG2",venue:"PRP318"},
+      {f:"EBENEZER JULIET S",slot:"G1+TG1",venue:"PRP318"},
+      {f:"ARUNKUMAR T",slot:"G2+TG2",venue:"PRP320"},
+      {f:"BALAMURUGAN R",slot:"G1+TG1",venue:"PRP309"},
+      {f:"BALAMURUGAN R",slot:"G2+TG2",venue:"PRP309"},
+      {f:"SUGUMAR R",slot:"G1+TG1",venue:"PRP319"},
+      {f:"SUGUMAR R",slot:"G2+TG2",venue:"PRP319"},
+      {f:"NATARAJAN P",slot:"G1+TG1",venue:"PRP320"},
+      {f:"RAJAY VEDARAJ I S",slot:"G1+TG1",venue:"PRP322"},
+      {f:"VARALAKSHMI M",slot:"G2+TG2",venue:"PRP322"},
+      {f:"ANANDA KUMAR S",slot:"G1+TG1",venue:"PRP323"},
+      {f:"SANJIBAN SEKHAR ROY",slot:"G2+TG2",venue:"PRP323"},
+      {f:"ANNAPURNA JONNALAGADDA",slot:"G1+TG1",venue:"PRP411"},
+      {f:"CHIRANJEEVI C",slot:"G2+TG2",venue:"PRP411"},
+      {f:"AKILA VICTOR",slot:"G1+TG1",venue:"PRP414"},
+      {f:"RAJAKUMAR K",slot:"G1+TG1",venue:"PRP333"},
+      {f:"SUDHAKARA PANDIAN R",slot:"G2+TG2",venue:"PRP332"},
+      {f:"RADHAKRISHNAN DELHIBABU",slot:"G2+TG2",venue:"PRP414"},
+      {f:"GUNAVATHI C",slot:"G1+TG1",venue:"PRP332"},
+      {f:"NAGESHWAR RAO RAGI",slot:"G1+TG1",venue:"PRP306"},
+      {f:"NAGESHWAR RAO RAGI",slot:"G2+TG2",venue:"PRP306"},
+      {f:"MEHFOOZA",slot:"G2+TG2",venue:"PRP330"},
+    ],
+    lab:[
+      {f:"SUDHAKARA PANDIAN R",slot:"L5+L6",venue:"SJT517"},
+      {f:"NATARAJAN P",slot:"L43+L44",venue:"SJT517"},
+      {f:"CHELLATAMILAN T",slot:"L13+L14",venue:"SJT515"},
+      {f:"CHELLATAMILAN T",slot:"L55+L56",venue:"SJT515"},
+      {f:"EBENEZER JULIET S",slot:"L25+L26",venue:"SJT515"},
+      {f:"EBENEZER JULIET S",slot:"L43+L44",venue:"SJT515"},
+      {f:"RAJAY VEDARAJ I S",slot:"L39+L40",venue:"SJT517"},
+      {f:"KAUSER AHMED P",slot:"L1+L2",venue:"SJT517"},
+      {f:"KAUSER AHMED P",slot:"L55+L56",venue:"SJT517"},
+      {f:"ANANDA KUMAR S",slot:"L31+L32",venue:"SJT517"},
+      {f:"ANNAPURNA JONNALAGADDA",slot:"L49+L50",venue:"SJT517"},
+      {f:"AKILA VICTOR",slot:"L33+L34",venue:"SJT517"},
+      {f:"DEGA NAGARAJU",slot:"L15+L16",venue:"SJT517"},
+      {f:"DEGA NAGARAJU",slot:"L41+L42",venue:"SJT517"},
+      {f:"NAGESHWAR RAO RAGI",slot:"L13+L14",venue:"SJT517"},
+      {f:"NAGESHWAR RAO RAGI",slot:"L57+L58",venue:"SJT517"},
+      {f:"GUNAVATHI C",slot:"L51+L52",venue:"SJT517"},
+      {f:"MONASH P",slot:"L25+L26",venue:"SJT517"},
+      {f:"MONASH P",slot:"L45+L46",venue:"SJT517"},
+      {f:"RAJAKUMAR K",slot:"L37+L38",venue:"SJT517"},
+      {f:"BALAMURUGAN R",slot:"L29+L30",venue:"SJT517"},
+      {f:"BALAMURUGAN R",slot:"L53+L54",venue:"SJT517"},
+      {f:"SUGUMAR R",slot:"L3+L4",venue:"SJT517"},
+      {f:"SUGUMAR R",slot:"L47+L48",venue:"SJT517"},
+      {f:"ARUNKUMAR T",slot:"L27+L28",venue:"SJT517"},
+      {f:"VARALAKSHMI M",slot:"L7+L8",venue:"SJT517"},
+      {f:"CHIRANJEEVI C",slot:"L21+L22",venue:"SJT515"},
+      {f:"RADHAKRISHNAN DELHIBABU",slot:"L23+L24",venue:"SJT517"},
+      {f:"MEHFOOZA",slot:"L11+L12",venue:"SJT517"},
+      {f:"SANJIBAN SEKHAR ROY",slot:"L19+L20",venue:"SJT517"},
+    ]
+  },
+  FS:{code:"FS",name:"Full Stack",short:"fullstack",color:"#DC2626",credits:4,
+    theory:[
+      {f:"BALASUBRAMANIAN C",slot:"A2",venue:"PRP322"},
+      {f:"BALASUBRAMANIAN C",slot:"A1",venue:"PRP322"},
+      {f:"SAM NAVIN M",slot:"A1",venue:"PRP323"},
+      {f:"SAM NAVIN M",slot:"A2",venue:"PRP323"},
+      {f:"MEENAKSHI S P",slot:"A1",venue:"PRP224"},
+      {f:"MEENAKSHI S P",slot:"A2",venue:"PRP224"},
+      {f:"NALINI N",slot:"A1",venue:"PRP304"},
+      {f:"NALINI N",slot:"A2",venue:"PRP304"},
+      {f:"ARUN KUMAR G",slot:"A1",venue:"PRP411"},
+      {f:"SANMUGA PRIYA M",slot:"A1",venue:"PRP306"},
+      {f:"NIHAAL AHMED K",slot:"A2",venue:"PRP306"},
+      {f:"LYDIA JANE G",slot:"A1",venue:"PRP308"},
+      {f:"LYDIA JANE G",slot:"A2",venue:"PRP308"},
+      {f:"TAMIZHARASI T",slot:"A1",venue:"PRP309"},
+      {f:"TAMIZHARASI T",slot:"A2",venue:"PRP309"},
+      {f:"PADMA PRIYA R",slot:"A1",venue:"PRP313"},
+      {f:"PADMA PRIYA R",slot:"A2",venue:"PRP313"},
+      {f:"ARULKUMAR V",slot:"A1",venue:"PRP318"},
+      {f:"ARULKUMAR V",slot:"A2",venue:"PRP318"},
+      {f:"SARANYA P",slot:"A1",venue:"PRP319"},
+      {f:"SARANYA P",slot:"A2",venue:"PRP319"},
+      {f:"SINTHUJA M",slot:"A1",venue:"PRP320"},
+      {f:"SINTHUJA M",slot:"A2",venue:"PRP320"},
+    ],
+    lab:[
+      {f:"MEENAKSHI S P",slot:"L45+L46+L57+L58",venue:"PRP137"},
+      {f:"MEENAKSHI S P",slot:"L3+L4+L19+L20",venue:"PRP137"},
+      {f:"NALINI N",slot:"L39+L40+L51+L52",venue:"PRP137"},
+      {f:"NALINI N",slot:"L9+L10+L25+L26",venue:"PRP137"},
+      {f:"SANMUGA PRIYA M",slot:"L43+L44+L55+L56",venue:"PRP137"},
+      {f:"NIHAAL AHMED K",slot:"L1+L2+L13+L14",venue:"PRP137"},
+      {f:"LYDIA JANE G",slot:"L45+L46+L49+L50",venue:"PRP356"},
+      {f:"LYDIA JANE G",slot:"L21+L22+L27+L28",venue:"PRP137"},
+      {f:"PADMA PRIYA R",slot:"L39+L40+L57+L58",venue:"PRP356"},
+      {f:"PADMA PRIYA R",slot:"L5+L6+L7+L8",venue:"PRP356"},
+      {f:"TAMIZHARASI T",slot:"L11+L12+L15+L16",venue:"PRP137"},
+      {f:"TAMIZHARASI T",slot:"L37+L38+L49+L50",venue:"PRP137"},
+      {f:"SAM NAVIN M",slot:"L49+L50+L57+L58",venue:"PRP655"},
+      {f:"SAM NAVIN M",slot:"L5+L6+L15+L16",venue:"PRP655"},
+      {f:"ARUN KUMAR G",slot:"L31+L32+L47+L48",venue:"PRP356"},
+      {f:"ARULKUMAR V",slot:"L33+L34+L41+L42",venue:"PRP356"},
+      {f:"ARULKUMAR V",slot:"L3+L4+L15+L16",venue:"PRP356"},
+      {f:"SARANYA P",slot:"L41+L42+L57+L58",venue:"PRP354"},
+      {f:"SARANYA P",slot:"L9+L10+L29+L30",venue:"PRP355"},
+      {f:"SINTHUJA M",slot:"L37+L38+L51+L52",venue:"PRP355"},
+      {f:"SINTHUJA M",slot:"L21+L22+L29+L30",venue:"PRP356"},
+      {f:"BALASUBRAMANIAN C",slot:"L51+L52+L55+L56",venue:"PRP356"},
+      {f:"BALASUBRAMANIAN C",slot:"L11+L12+L19+L20",venue:"PRP356"},
+    ]
   }
 };
 
@@ -561,33 +322,8 @@ const COURSES = {
 // Evening theory (slot ends in 2) → morning lab (L1-L30)
 // Morning theory (slot ends in 1) → evening lab (L31-L60)
 // ═══════════════════════════════════════════════════════════════
-function getSel(code) {
-  return window._state?.sel?.[code] || null;
-}
-
-function getTheoryArr(code) {
-  const c = COURSES[code];
-  let arr = c.theory;
-  if (!arr) return [];
-  if (c.isSelector) {
-    const sel = getSel(code);
-    if (Array.isArray(arr)) return arr.filter(o => o.f === sel);
-    return arr[sel] || [];
-  }
-  return arr;
-}
-
-function getLabArr(code) {
-  const c = COURSES[code];
-  let arr = c.lab;
-  if (!arr || (Array.isArray(arr) && arr.length === 0)) return [];
-  if (c.isSelector) {
-    const sel = getSel(code);
-    if (Array.isArray(arr)) return arr;
-    return arr[sel] || [];
-  }
-  return arr;
-}
+function getTheoryArr(code) { return COURSES[code].theory || []; }
+function getLabArr(code) { return COURSES[code].lab || []; }
 
 function buildPairs(code) {
   const thArr = getTheoryArr(code);
@@ -596,7 +332,7 @@ function buildPairs(code) {
 
   if (thArr.length === 0 && lbArr.length === 0) return pairs;
 
-  // Lab only (Java)
+  // Lab only
   if (thArr.length === 0) {
     lbArr.forEach(l => {
       pairs.push({ theory: null, lab: l, faculty: l.f,
@@ -605,7 +341,7 @@ function buildPairs(code) {
     return pairs;
   }
 
-  // Theory only (QQ, HSM, Lang with no lab)
+  // Theory only (e.g. Models of Computation)
   if (lbArr.length === 0) {
     thArr.forEach(t => {
       pairs.push({ theory: t, lab: null, faculty: t.f,
@@ -614,7 +350,9 @@ function buildPairs(code) {
     return pairs;
   }
 
-  // Theory + Lab — same faculty, correct period pairing
+  // Theory + Lab — same faculty, correct period pairing.
+  // Full Stack's theory slots (bare "A1"/"A2") have no "T" letter but
+  // still follow the morning(1)/evening(2) → lab pairing rule.
   thArr.forEach(t => {
     const evening = isEveningTheory(t.slot);
     const sameFacLabs = lbArr.filter(l => l.f === t.f);

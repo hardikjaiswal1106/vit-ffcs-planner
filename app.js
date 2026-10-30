@@ -2,7 +2,6 @@
 // STATE
 // ═══════════════════════════════════════════════════════════════
 window._state = {
-  sel: { QQ:"TIME", HSM:"BAHUM111", LANG:"Spanish" },
   priorities: {},
   combos: [], curCombo: 0, warnings: []
 };
@@ -16,7 +15,6 @@ function generate() {
   const MAX = 50;
   const combos = [], warnings = [];
 
-  // Per-course ordered pairs
   const coursePairs = {};
   codes.forEach(code => {
     const all = buildPairs(code);
@@ -52,7 +50,6 @@ function generate() {
       if (combos.length >= MAX) return;
     }
     if (!placed || pairs.length === 0) {
-      // Find what's blocking each pair
       const clashReasons = [];
       pairs.forEach(pair => {
         const keys = [
@@ -61,7 +58,6 @@ function generate() {
         ];
         keys.forEach(k => {
           if (used.has(k)) {
-            // Find which placed course owns this key
             const blocker = current.find(({code:c, pair:p}) => {
               if (!p) return false;
               const bkeys = [
@@ -95,28 +91,8 @@ function generate() {
 // ═══════════════════════════════════════════════════════════════
 function render() {
   saveState();
-  renderSelectors();
   renderCards();
   renderResults();
-}
-
-function renderSelectors() {
-  renderSelGroup("sel-HSM", "HSM", COURSES.HSM.selectorOptions, COURSES.HSM.selectorNames);
-  renderSelGroup("sel-LANG", "LANG", COURSES.LANG.selectorOptions, COURSES.LANG.selectorNames);
-  renderSelGroup("sel-QQ", "QQ", COURSES.QQ.selectorOptions, {});
-}
-
-function renderSelGroup(elId, key, opts, names) {
-  const el = document.getElementById(elId);
-  if (!el) return;
-  el.innerHTML = "";
-  opts.forEach(opt => {
-    const b = document.createElement("button");
-    b.className = "sel-btn" + (S.sel[key] === opt ? " active" : "");
-    b.textContent = names[opt] || opt;
-    b.onclick = () => { S.sel[key] = opt; S.priorities[key] = []; S.combos = []; render(); };
-    el.appendChild(b);
-  });
 }
 
 function renderCards() {
@@ -280,7 +256,6 @@ function renderResults() {
 function navCombo(d) { S.curCombo = Math.max(0,Math.min(S.combos.length-1,S.curCombo+d)); renderResults(); }
 
 function buildTT(combo) {
-  // Build lookup: day → col → {code, pair, color, short}
   const grid = {};
   DAYS.forEach(day => { grid[day] = {}; for(let c=0;c<12;c++) grid[day][c]=null; });
 
@@ -299,7 +274,6 @@ function buildTT(combo) {
     }
   });
 
-  // Column definitions — each L number gets its own col
   const cols = [
     {p:"P1",  time:"08:00-08:50", theory:"A1",  lab:"L1",  cidx:0},
     {p:"P2",  time:"08:51-09:40", theory:null,  lab:"L2",  cidx:1},
@@ -307,7 +281,7 @@ function buildTT(combo) {
     {p:"P4",  time:"10:41-11:30", theory:null,  lab:"L4",  cidx:3},
     {p:"P5",  time:"11:40-12:30", theory:"D1",  lab:"L5",  cidx:4},
     {p:"P6",  time:"12:31-01:20", theory:null,  lab:"L6",  cidx:5},
-    null, // break
+    null,
     {p:"P7",  time:"02:00-02:50", theory:"A2",  lab:"L31", cidx:6},
     {p:"P8",  time:"02:51-03:40", theory:null,  lab:"L32", cidx:7},
     {p:"P9",  time:"03:51-04:40", theory:"F2",  lab:"L33", cidx:8},
@@ -318,7 +292,6 @@ function buildTT(combo) {
 
   let h = `<div class="tt-scroll"><table class="tt">`;
 
-  // Header
   h += `<thead><tr><th class="th-corner">THEORY<br><span class="th-lab-lbl">LAB</span></th>`;
   cols.forEach(col => {
     if (!col) { h += `<th class="th-brk"></th>`; return; }
@@ -371,10 +344,10 @@ function exportPNG() {
 // STORAGE + INIT
 // ═══════════════════════════════════════════════════════════════
 function saveState() {
-  try { localStorage.setItem("ffcs_v4", JSON.stringify({sel:S.sel, priorities:S.priorities})); } catch(e){}
+  try { localStorage.setItem("ffcs_v4_sem4", JSON.stringify({priorities:S.priorities})); } catch(e){}
 }
 function loadState() {
-  try { const d=JSON.parse(localStorage.getItem("ffcs_v4")||"{}"); if(d.sel) Object.assign(S.sel,d.sel); if(d.priorities) Object.assign(S.priorities,d.priorities); } catch(e){}
+  try { const d=JSON.parse(localStorage.getItem("ffcs_v4_sem4")||"{}"); if(d.priorities) Object.assign(S.priorities,d.priorities); } catch(e){}
 }
 
 document.addEventListener("DOMContentLoaded", () => { loadState(); render(); });
