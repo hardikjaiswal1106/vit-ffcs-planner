@@ -12,8 +12,15 @@ window._state = {
 };
 const S = window._state;
 
-const COL_TIMES = ["8:00","8:51","9:51","10:41","11:40","12:31",
-                   "2:00","2:51","3:51","4:41","5:40","6:31"];
+// Theory and lab periods are offset from each other — a theory slot and a
+// lab slot sharing the same column number start at different real times
+// (per VIT's official grid). Keep both so every cell shows its true time.
+const THEORY_COL_TIMES = ["8:00","9:00","10:00","11:00","12:00","",
+                          "2:00","3:00","4:00","5:00","6:00",""];
+const LAB_COL_TIMES = ["8:00","8:51","9:51","10:41","11:40","12:31",
+                       "2:00","2:51","3:51","4:41","5:40","6:31"];
+// Back-compat alias for any stray reference — defaults to theory timing.
+const COL_TIMES = THEORY_COL_TIMES;
 
 // Source data is ALL CAPS; soften it for display, keep slot codes as-is.
 const titleCase = s => String(s).toLowerCase()
@@ -442,7 +449,9 @@ function buildGrid(combo) {
   let h = `<div class="tt-scroll"><table class="tt"><thead><tr><th class="tt-corner"></th>`;
   for (let i = 0; i < 12; i++) {
     if (i === 6) h += `<th class="tt-gap"></th>`;
-    h += `<th class="tt-col"><span class="tt-p">P${i + 1}</span><span class="tt-time">${COL_TIMES[i]}</span></th>`;
+    const th = THEORY_COL_TIMES[i], lb = LAB_COL_TIMES[i];
+    const timeLabel = th ? (th === lb ? th : `${th} / ${lb}`) : lb;
+    h += `<th class="tt-col"><span class="tt-p">P${i + 1}</span><span class="tt-time">${timeLabel}</span></th>`;
   }
   h += `</tr></thead><tbody>`;
 
@@ -456,8 +465,9 @@ function buildGrid(combo) {
         const c = COURSES[hit.code];
         const t = tints(c.color);
         const slot = (hit.kind === "lab" ? DAY_LAB[day][col] : DAY_THEORY[day][col]) || "";
+        const cellTime = hit.kind === "lab" ? LAB_COL_TIMES[col] : THEORY_COL_TIMES[col];
         h += `<td class="cell on" data-course="${hit.code}" data-dk="${day}-${col}"
-          data-fac="${hit.entry.f}" data-venue="${hit.entry.venue || ""}" data-slot="${hit.entry.slot}"
+          data-fac="${hit.entry.f}" data-venue="${hit.entry.venue || ""}" data-slot="${hit.entry.slot}" data-time="${cellTime}"
           style="--c:${c.color};--bg:${t.bg};--bg-hi:${t.bgHi};--fg:${t.fg};animation-delay:${(di * 12 + col) * 7}ms">
           <div class="cell-in">
             <span class="cell-code">${c.short}</span>
@@ -496,7 +506,7 @@ function buildAgenda(combo) {
       ${rows.map(r => {
         const c = COURSES[r.code]; const t = tints(c.color);
         return `<div class="ag-row" style="--c:${c.color};background:${t.bg}">
-          <span class="ag-t">${COL_TIMES[r.col]}</span>
+          <span class="ag-t">${(r.kind === "lab" ? LAB_COL_TIMES : THEORY_COL_TIMES)[r.col]}</span>
           <span class="ag-b"><span class="ag-c" style="color:${t.fg}">${c.short}${r.kind === "lab" ? " lab" : ""}</span>
           <span class="ag-f">${titleCase(r.entry.f)}</span></span>
           <span class="ag-s">${r.entry.venue || ""}</span></div>`;
@@ -590,7 +600,7 @@ function showTip(cell) {
   const c = COURSES[cell.dataset.course];
   t.innerHTML = `<div class="tip-f">${titleCase(cell.dataset.fac)}</div>
     <div class="tip-m">${c.name}</div>
-    <div class="tip-m">${cell.dataset.slot}${cell.dataset.venue ? " · " + cell.dataset.venue : ""}</div>`;
+    <div class="tip-m">${cell.dataset.slot}${cell.dataset.venue ? " · " + cell.dataset.venue : ""}${cell.dataset.time ? " · " + cell.dataset.time : ""}</div>`;
   t.hidden = false;
 }
 function moveTip(e) {
