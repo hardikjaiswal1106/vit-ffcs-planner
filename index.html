@@ -1,44 +1,93 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>VIT FFCS Planner — 4th Sem</title>
+<title>FFCS Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="hdr">
-  <div class="hdr-title">VIT <span>FFCS</span> Planner — 4th Sem</div>
-  <div class="hdr-r">
-    <button class="btn-gen" onclick="generate()">⚡ Generate Timetables</button>
-    <button class="btn-clr" onclick="if(confirm('Clear all?')){S.priorities={};S.combos=[];render()}">Clear</button>
+
+<div class="field" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="1"  y="1"  width="6" height="6" rx="1"/>
+      <rect x="9"  y="1"  width="6" height="6" rx="1"/>
+      <rect x="17" y="1"  width="6" height="6" rx="1"/>
+      <rect x="1"  y="9"  width="6" height="6" rx="1"/>
+      <rect x="9"  y="9"  width="6" height="6" rx="1" class="lit"/>
+      <rect x="17" y="9"  width="6" height="6" rx="1"/>
+      <rect x="1"  y="17" width="6" height="6" rx="1"/>
+      <rect x="9"  y="17" width="6" height="6" rx="1"/>
+      <rect x="17" y="17" width="6" height="6" rx="1"/>
+    </svg>
+    <span class="brand-text">
+      <span class="brand-name">FFCS Planner</span>
+      <span class="brand-sub">VIT Vellore, winter 2026&ndash;27</span>
+    </span>
+  </div>
+
+  <div class="topbar-actions">
+    <button class="btn-ghost find-btn" id="palette-btn">
+      Find faculty <kbd id="kbd-hint">⌘K</kbd>
+    </button>
+    <button class="theme-btn" id="theme-btn" aria-label="Switch theme">
+      <span class="theme-track"><span class="theme-knob"></span></span>
+    </button>
+    <button class="btn-primary" id="gen-btn">Generate</button>
   </div>
 </header>
-<div class="layout">
-  <aside class="sidebar">
-    <div class="sb-scroll">
-      <div class="sb-sec">
-        <div class="sb-title">Selectors</div>
-        <div class="sel-g"><div class="sel-gl">HSM Course</div><div class="sel-row" id="sel-HSM"></div></div>
-        <div class="sel-g"><div class="sel-gl">APT Vendor</div><div class="sel-row" id="sel-QQ"></div></div>
-      </div>
-      <div class="sb-sec"><div class="sb-title">Faculty Priority — click to expand</div></div>
-      <div id="course-cards"></div>
+
+<div class="shell">
+
+  <aside class="rail">
+    <div class="rail-scroll">
+      <section class="rail-sec">
+        <h2 class="rail-h">Electives</h2>
+        <div class="pick">
+          <span class="pick-l">HSM course</span>
+          <div class="seg" id="sel-HSM"></div>
+        </div>
+        <div class="pick">
+          <span class="pick-l">Skills vendor</span>
+          <div class="seg" id="sel-QQ"></div>
+        </div>
+      </section>
+
+      <section class="rail-sec">
+        <h2 class="rail-h">Faculty priority</h2>
+        <p class="rail-note">Rank who you want. Generate only uses the names you rank.</p>
+        <div id="course-cards"></div>
+      </section>
     </div>
+    <button class="btn-clear" id="clear-btn">Clear all priorities</button>
   </aside>
-  <main class="main">
-    <div class="legend">
-      <div class="leg-i"><div class="leg-d" style="background:#7C3AED"></div>BACSE201 Models of Computation</div>
-      <div class="leg-i"><div class="leg-d" style="background:#0EA5E9"></div>BACSE204 Software Engineering</div>
-      <div class="leg-i"><div class="leg-d" style="background:#059669"></div>BACSE205 Fundamentals of AIML</div>
-      <div class="leg-i"><div class="leg-d" style="background:#DC2626"></div>BACSE325 Full Stack</div>
-      <div class="leg-i"><div class="leg-d" style="background:#7C2D8F"></div>BAHUM103 Ethics</div>
-      <div class="leg-i"><div class="leg-d" style="background:#0891B2"></div>BASTS102 QQ Skills</div>
-      <div class="leg-i"><div class="leg-d" style="background:#BE185D"></div>HSM Elective</div>
-    </div>
+
+  <main class="stage">
     <div id="results"></div>
   </main>
+
 </div>
+
+<div class="palette" id="palette" hidden>
+  <div class="palette-box">
+    <input class="palette-input" id="palette-input" placeholder="Type a faculty name" autocomplete="off" spellcheck="false">
+    <div class="palette-list" id="palette-list"></div>
+    <div class="palette-foot">
+      <span><kbd>↑</kbd><kbd>↓</kbd> move</span>
+      <span><kbd>enter</kbd> add as priority</span>
+      <span><kbd>esc</kbd> close</span>
+    </div>
+  </div>
+</div>
+
+<div class="tip" id="tip" hidden></div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>

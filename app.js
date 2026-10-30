@@ -1,16 +1,51 @@
-// ═══════════════════════════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// FFCS Planner — UI layer
+// ═══════════════════════════════════════════════════════════
 window._state = {
   sel: { QQ:"TIME", HSM:"BAHUM109" },
   priorities: {},
-  combos: [], curCombo: 0, warnings: []
+  combos: [], curCombo: 0, warnings: [],
+  occupied: {},         // slot key -> {code,type}  for current combo
+  focus: null,          // course code currently cross-highlighted
+  pinned: false,        // focus locked by click
+  theme: "light"
 };
 const S = window._state;
 
-// ═══════════════════════════════════════════════════════════════
-// GENERATE
-// ═══════════════════════════════════════════════════════════════
+const COL_TIMES = ["8:00","8:51","9:51","10:41","11:40","12:31",
+                   "2:00","2:51","3:51","4:41","5:40","6:31"];
+
+// Source data is ALL CAPS; soften it for display, keep slot codes as-is.
+const titleCase = s => String(s).toLowerCase()
+  .replace(/(^|[\s.&/-])([a-z])/g, (m, a, b) => a + b.toUpperCase());
+const shortFac = s => {
+  const first = titleCase(s).split(" ")[0];
+  return first.length > 13 ? first.slice(0, 12) + "…" : first;
+};
+
+// ── colour helpers (inline tints keep PNG export faithful) ──
+const hex2rgb = h => {
+  h = h.replace("#","");
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+};
+const mix = (a, b, t) => {
+  const A = hex2rgb(a), B = hex2rgb(b);
+  return `rgb(${A.map((v,i)=>Math.round(v+(B[i]-v)*t)).join(",")})`;
+};
+function tints(courseHex){
+  const dark = S.theme === "dark";
+  const base = dark ? "#232820" : "#FAFBF8";
+  const ink  = dark ? "#E9ECE4" : "#1C1F1C";
+  return {
+    bg:   mix(courseHex, base, dark ? .74 : .84),
+    bgHi: mix(courseHex, base, dark ? .58 : .70),
+    fg:   mix(courseHex, ink,  dark ? .62 : .22)
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+// GENERATE  (algorithm unchanged)
+// ═══════════════════════════════════════════════════════════
 function generate() {
   const codes = Object.keys(COURSES);
   const MAX = 50;
@@ -27,7 +62,7 @@ function generate() {
       if (idx >= 0) ordered[idx] = p; else rest.push(p);
     });
     coursePairs[code] = prios.length > 0 ? ordered.filter(Boolean) : rest;
-    if (!coursePairs[code].length) warnings.push(`No options for ${COURSES[code].name}`);
+    if (!coursePairs[code].length) warnings.push(`No options available for ${COURSES[code].name}.`);
   });
 
   function backtrack(idx, current, used) {
@@ -51,32 +86,26 @@ function generate() {
       if (combos.length >= MAX) return;
     }
     if (!placed || pairs.length === 0) {
-      const clashReasons = [];
+      const reasons = [];
       pairs.forEach(pair => {
         const keys = [
           ...(pair.theory ? slotKeys(pair.theory.slot) : []),
           ...(pair.lab    ? slotKeys(pair.lab.slot)    : [])
         ];
         keys.forEach(k => {
-          if (used.has(k)) {
-            const blocker = current.find(({code:c, pair:p}) => {
-              if (!p) return false;
-              const bkeys = [
-                ...(p.theory ? slotKeys(p.theory.slot) : []),
-                ...(p.lab    ? slotKeys(p.lab.slot)    : [])
-              ];
-              return bkeys.includes(k);
-            });
-            if (blocker) {
-              const type = pair.theory && slotKeys(pair.theory.slot).includes(k) ? 'theory' : 'lab';
-              const btype = blocker.pair.theory && slotKeys(blocker.pair.theory.slot).includes(k) ? 'theory' : 'lab';
-              clashReasons.push(COURSES[blocker.code].short + ' ' + btype);
-            }
-          }
+          if (!used.has(k)) return;
+          const blocker = current.find(({pair:p}) => {
+            if (!p) return false;
+            const bk = [
+              ...(p.theory ? slotKeys(p.theory.slot) : []),
+              ...(p.lab    ? slotKeys(p.lab.slot)    : [])
+            ];
+            return bk.includes(k);
+          });
+          if (blocker) reasons.push(COURSES[blocker.code].short);
         });
       });
-      const uniqueReasons = [...new Set(clashReasons)].slice(0,2).join(', ');
-      current.push({ code, pair: null, clashWith: uniqueReasons });
+      current.push({ code, pair: null, clashWith: [...new Set(reasons)].slice(0,2).join(" and ") });
       backtrack(idx + 1, current, used);
       current.pop();
     }
@@ -84,12 +113,13 @@ function generate() {
 
   backtrack(0, [], new Set());
   S.combos = combos; S.curCombo = 0; S.warnings = warnings;
+  S.focus = null; S.pinned = false;
   renderResults();
 }
 
-// ═══════════════════════════════════════════════════════════════
-// RENDER
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// RAIL
+// ═══════════════════════════════════════════════════════════
 function render() {
   saveState();
   renderSelectors();
@@ -98,17 +128,17 @@ function render() {
 }
 
 function renderSelectors() {
-  renderSelGroup("sel-HSM", "HSM", COURSES.HSM.selectorOptions, COURSES.HSM.selectorNames);
-  renderSelGroup("sel-QQ", "QQ", COURSES.QQ.selectorOptions, {});
+  seg("sel-HSM", "HSM", COURSES.HSM.selectorOptions, COURSES.HSM.selectorNames);
+  seg("sel-QQ",  "QQ",  COURSES.QQ.selectorOptions,  {});
 }
 
-function renderSelGroup(elId, key, opts, names) {
+function seg(elId, key, opts, names) {
   const el = document.getElementById(elId);
   if (!el) return;
   el.innerHTML = "";
   opts.forEach(opt => {
     const b = document.createElement("button");
-    b.className = "sel-btn" + (S.sel[key] === opt ? " active" : "");
+    b.className = "seg-btn" + (S.sel[key] === opt ? " on" : "");
     b.textContent = names[opt] || opt;
     b.onclick = () => { S.sel[key] = opt; S.priorities[key] = []; S.combos = []; render(); };
     el.appendChild(b);
@@ -118,256 +148,589 @@ function renderSelGroup(elId, key, opts, names) {
 function renderCards() {
   const el = document.getElementById("course-cards");
   if (!el) return;
+  const openNow = new Set([...el.querySelectorAll(".cc.open")].map(n => n.dataset.code));
   el.innerHTML = "";
   Object.keys(COURSES).forEach(code => {
     const c = COURSES[code];
+    const n = (S.priorities[code] || []).length;
     const div = document.createElement("div");
-    div.className = "cc";
+    div.className = "cc" + (openNow.has(code) ? " open" : "");
+    div.dataset.code = code;
+    div.style.setProperty("--c", c.color);
     div.innerHTML = `
-      <div class="cc-hdr" onclick="toggleCard('${code}')">
-        <span class="cc-dot" style="background:${c.color}"></span>
-        <span class="cc-code" style="color:${c.color}">${c.code}</span>
+      <div class="cc-hdr">
+        <span class="cc-swatch"></span>
         <span class="cc-name">${c.name}</span>
-        <span class="cc-caret" id="caret-${code}">▾</span>
+        <span class="cc-count${n ? "" : " zero"}">${n}</span>
+        <span class="cc-caret">▼</span>
       </div>
-      <div class="cc-body" id="body-${code}">
-        <div class="cc-lbl">Priority <span class="cc-hint">drag to reorder · × to remove</span></div>
+      <div class="cc-body">
         <div class="cc-chips" id="chips-${code}"></div>
-        <div class="cc-sw">
-          <input class="cc-inp" id="ci-${code}" placeholder="Search faculty..." autocomplete="off">
+        <div class="cc-search">
+          <input class="cc-input" id="ci-${code}" placeholder="Search faculty" autocomplete="off" spellcheck="false">
           <div class="cc-drop" id="cd-${code}"></div>
         </div>
       </div>`;
+    div.querySelector(".cc-hdr").onclick = () => div.classList.toggle("open");
     el.appendChild(div);
     renderChips(code);
     bindSearch(code);
   });
 }
 
-function toggleCard(code) {
-  const b = document.getElementById("body-"+code);
-  const c = document.getElementById("caret-"+code);
-  if (b) { const o = b.classList.toggle("open"); if(c) c.textContent = o?"▴":"▾"; }
-}
-
 function renderChips(code) {
-  const el = document.getElementById("chips-"+code);
+  const el = document.getElementById("chips-" + code);
   if (!el) return;
   const prios = S.priorities[code] || [];
   el.innerHTML = "";
   if (!prios.length) {
-    el.innerHTML = `<div class="cc-noprio">No priority set</div>`;
+    el.innerHTML = `<div class="cc-empty">Nobody ranked yet. Any faculty may be used.</div>`;
     return;
   }
   prios.forEach((pair, i) => {
+    const slot = pair.theory
+      ? pair.theory.slot + (pair.lab ? "  →  " + pair.lab.slot : "")
+      : pair.lab.slot;
     const ch = document.createElement("div");
-    ch.className = "cc-chip"; ch.draggable = true; ch.dataset.idx = i;
-    ch.innerHTML = `<span class="ch-n">${i+1}</span><span class="ch-t">${pair.display}</span><span class="ch-x" onclick="removePrio('${code}',${i})">×</span>`;
-    ch.addEventListener("dragstart", e => { e.dataTransfer.setData("text/plain", JSON.stringify({code,idx:i})); ch.classList.add("dragging"); });
+    ch.className = "chip"; ch.draggable = true;
+    ch.innerHTML = `
+      <span class="chip-n">${i + 1}</span>
+      <span class="chip-body">
+        <span class="chip-fac">${titleCase(pair.faculty)}</span>
+        <span class="chip-slot">${slot}</span>
+      </span>
+      <button class="chip-x" aria-label="Remove">×</button>`;
+    ch.querySelector(".chip-x").onclick = e => {
+      e.stopPropagation();
+      S.priorities[code].splice(i, 1);
+      renderChips(code); bumpCount(code); saveState();
+    };
+    ch.addEventListener("dragstart", e => {
+      e.dataTransfer.setData("text/plain", JSON.stringify({ code, idx: i }));
+      ch.classList.add("dragging");
+    });
     ch.addEventListener("dragend", () => ch.classList.remove("dragging"));
-    ch.addEventListener("dragover", e => { e.preventDefault(); ch.classList.add("drag-over"); });
-    ch.addEventListener("dragleave", () => ch.classList.remove("drag-over"));
+    ch.addEventListener("dragover", e => { e.preventDefault(); ch.classList.add("over"); });
+    ch.addEventListener("dragleave", () => ch.classList.remove("over"));
     ch.addEventListener("drop", e => {
-      e.preventDefault(); ch.classList.remove("drag-over");
+      e.preventDefault(); ch.classList.remove("over");
       const d = JSON.parse(e.dataTransfer.getData("text/plain"));
       if (d.code !== code) return;
-      const [m] = S.priorities[code].splice(d.idx,1);
-      S.priorities[code].splice(i,0,m);
+      const [m] = S.priorities[code].splice(d.idx, 1);
+      S.priorities[code].splice(i, 0, m);
       renderChips(code); saveState();
     });
     el.appendChild(ch);
   });
 }
 
-function removePrio(code, idx) {
-  S.priorities[code]?.splice(idx,1);
-  renderChips(code); saveState();
+function bumpCount(code) {
+  const card = document.querySelector(`.cc[data-code="${code}"] .cc-count`);
+  if (!card) return;
+  const n = (S.priorities[code] || []).length;
+  card.textContent = n;
+  card.classList.toggle("zero", n === 0);
+}
+
+function addPriority(code, pair) {
+  if (!S.priorities[code]) S.priorities[code] = [];
+  if (S.priorities[code].some(p => p.display === pair.display)) return false;
+  S.priorities[code].push(pair);
+  renderChips(code); bumpCount(code); saveState();
+  return true;
+}
+
+function pairSlot(p) {
+  return p.theory ? p.theory.slot + (p.lab ? " → " + p.lab.slot : "") : p.lab.slot;
 }
 
 function bindSearch(code) {
-  const inp = document.getElementById("ci-"+code);
-  const drop = document.getElementById("cd-"+code);
-  if (!inp||!drop) return;
+  const inp = document.getElementById("ci-" + code);
+  const drop = document.getElementById("cd-" + code);
+  if (!inp || !drop) return;
   inp.addEventListener("input", () => {
     const q = inp.value.toLowerCase().trim();
     drop.innerHTML = "";
-    if (!q) { drop.style.display="none"; return; }
-    const pairs = buildPairs(code);
-    const matches = pairs.filter(p => p.faculty.toLowerCase().includes(q));
-    if (!matches.length) { drop.style.display="none"; return; }
-    matches.slice(0,10).forEach(pair => {
+    if (!q) { drop.classList.remove("on"); return; }
+    const matches = buildPairs(code).filter(p => p.faculty.toLowerCase().includes(q));
+    if (!matches.length) { drop.classList.remove("on"); return; }
+    matches.slice(0, 12).forEach(pair => {
       const item = document.createElement("div");
-      item.className = "cc-di";
-      if (pair.theory && pair.lab) {
-        item.innerHTML = `<span class="di-f">${pair.faculty}</span><span class="di-th">${pair.theory.slot}</span><span class="di-a">→</span><span class="di-lb">${pair.lab.slot}</span>`;
-      } else if (pair.theory) {
-        item.innerHTML = `<span class="di-f">${pair.faculty}</span><span class="di-th">${pair.theory.slot}</span>`;
-      } else {
-        item.innerHTML = `<span class="di-f">${pair.faculty}</span><span class="di-lb">${pair.lab.slot}</span>`;
-      }
+      item.className = "drop-i";
+      item.innerHTML = `<span class="drop-f">${titleCase(pair.faculty)}</span><span class="drop-s">${pairSlot(pair)}</span>`;
       item.onmousedown = e => {
         e.preventDefault();
-        if (!S.priorities[code]) S.priorities[code] = [];
-        if (!S.priorities[code].find(p=>p.display===pair.display)) S.priorities[code].push(pair);
-        renderChips(code); inp.value=""; drop.style.display="none"; saveState();
+        addPriority(code, pair);
+        inp.value = ""; drop.classList.remove("on");
       };
       drop.appendChild(item);
     });
-    drop.style.display = "block";
+    drop.classList.add("on");
   });
-  inp.addEventListener("blur", () => setTimeout(()=>drop.style.display="none", 200));
+  inp.addEventListener("blur", () => setTimeout(() => drop.classList.remove("on"), 160));
 }
 
-// ═══════════════════════════════════════════════════════════════
-// TIMETABLE
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// RESULTS
+// ═══════════════════════════════════════════════════════════
 function renderResults() {
   const el = document.getElementById("results");
   if (!el) return;
+
   if (!S.combos.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">📅</div><div class="empty-t">Set priorities and click Generate</div><div class="empty-s">All clash-free combinations will appear here</div></div>`;
+    el.innerHTML = `
+      ${S.warnings.map(w => `<div class="warn-row">${w}</div>`).join("")}
+      <div class="blank">
+        <svg class="blank-mark" viewBox="0 0 24 24">
+          <rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/>
+          <rect x="17" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/>
+          <rect x="9" y="9" width="6" height="6" rx="1"/><rect x="17" y="9" width="6" height="6" rx="1"/>
+          <rect x="1" y="17" width="6" height="6" rx="1"/><rect x="9" y="17" width="6" height="6" rx="1"/>
+          <rect x="17" y="17" width="6" height="6" rx="1"/>
+        </svg>
+        <div class="blank-t">No timetable yet</div>
+        <div class="blank-s">Rank the faculty you want in the panel on the left, then generate. Leave a course unranked to let any faculty fill it.</div>
+      </div>`;
     return;
   }
-  const total = S.combos.length, cur = S.curCombo, combo = S.combos[cur];
-  let credits=0, placed=0;
-  const labDays = new Set(), unplaced = [], clashInfo = [];
-  const occupied = {};
-  combo.forEach(({code,pair,clashWith}) => {
-    if (!pair) { unplaced.push({code, clashWith: clashWith||''}); return; }
-    placed++; credits += COURSES[code].credits;
-    if (pair.theory) {
-      slotKeys(pair.theory.slot).forEach(k => {
-        if (occupied[k]) clashInfo.push(COURSES[code].short+' theory ↔ '+COURSES[occupied[k].code].short+' '+occupied[k].type);
-        else occupied[k] = {code, type:'theory'};
-      });
-    }
-    if (pair.lab) {
-      slotCells(pair.lab.slot).forEach(c => labDays.add(c.day));
-      slotKeys(pair.lab.slot).forEach(k => {
-        if (occupied[k]) clashInfo.push(COURSES[code].short+' lab ↔ '+COURSES[occupied[k].code].short+' '+occupied[k].type);
-        else occupied[k] = {code, type:'lab'};
-      });
-    }
-  });
-  const freeDays = 5 - labDays.size;
-  const totalC = Object.keys(COURSES).length;
-  const clashHtml = [...new Set(clashInfo)].slice(0,3).map(c=>`<span class="clash-pill">⚠️ ${c}</span>`).join('');
-  const unplacedHtml = unplaced.map(({code:c, clashWith:cw})=>{
-    const reason = cw ? ' clashes with '+cw : '';
-    return `<span class="unplaced-pill">❌ ${COURSES[c].short}${reason}</span>`;
-  }).join('');
-  const warns = S.warnings.map(w=>`<div class="warn-bar">⚠️ ${w}</div>`).join('');
-  el.innerHTML = `${warns}
-    <div class="tt-nav">
-      <button class="nbtn" onclick="navCombo(-1)" ${cur===0?'disabled':''}>← Prev</button>
-      <span class="nlbl">Timetable <b>${cur+1}</b> / <b>${total}</b>${total===50?' · best 50':''}</span>
-      <button class="nbtn" onclick="navCombo(1)" ${cur===total-1?'disabled':''}>Next →</button>
-      <div class="nstats">
-        <span>📚 <b>${credits}</b> credits</span>
-        <span>🌴 <b>${freeDays}</b> free day${freeDays!==1?'s':''}</span>
-        <span class="${placed<totalC?'stat-warn':''}">✅ <b>${placed}/${totalC}</b></span>
-        ${unplacedHtml}${clashHtml}
+
+  const combo = S.combos[S.curCombo];
+  const stats = computeStats(combo);
+  S.occupied = stats.occupied;
+
+  el.innerHTML = `
+    ${S.warnings.map(w => `<div class="warn-row">${w}</div>`).join("")}
+    <div class="bento">
+      <div class="tile t-nav">
+        <div>
+          <div class="t-lbl">Timetable</div>
+          <div class="t-num"><span id="n-cur">${S.curCombo + 1}</span><span class="of"> / ${S.combos.length}${S.combos.length === 50 ? "+" : ""}</span></div>
+        </div>
+        <div class="nav-row">
+          <button class="nav-b" id="prev-b" ${S.curCombo === 0 ? "disabled" : ""} aria-label="Previous">‹</button>
+          <button class="nav-b" id="next-b" ${S.curCombo === S.combos.length - 1 ? "disabled" : ""} aria-label="Next">›</button>
+          <div class="nav-rail"><div class="nav-fill" style="width:${((S.curCombo + 1) / S.combos.length) * 100}%"></div></div>
+        </div>
       </div>
-      <button class="btn-export" onclick="exportPNG()">📥 Save PNG</button>
+
+      <div class="tile t-stat">
+        <div class="t-lbl">Credits</div>
+        <div><div class="t-num" id="n-cred">${stats.credits}</div>
+        <div class="t-sub">${stats.placed} of ${Object.keys(COURSES).length} courses placed</div></div>
+      </div>
+
+      <div class="tile t-stat">
+        <div class="t-lbl">Lab-free days</div>
+        <div><div class="t-num${stats.freeDays === 0 ? " warn" : ""}" id="n-free">${stats.freeDays}</div>
+        <div class="t-sub">${stats.freeNames.length ? stats.freeNames.join(", ") : "Labs every day"}</div></div>
+      </div>
+
+      <div class="tile t-load">
+        <div class="t-lbl">Weekly load</div>
+        ${loadMeter(stats)}
+      </div>
     </div>
-    <div id="tt-wrap">${buildTT(combo)}</div>`;
+
+    <div class="tile t-grid">
+      <div class="grid-head">
+        <span class="grid-title">Week</span>
+        <div class="legend">${legend(combo)}</div>
+        <button class="btn-png" id="png-b">Save image</button>
+      </div>
+      ${buildGrid(combo)}
+      ${buildAgenda(combo)}
+    </div>
+
+    ${stats.flags.length ? `<div class="strip">${stats.flags.join("")}</div>` : ""}`;
+
+  wireResults();
 }
 
-function navCombo(d) { S.curCombo = Math.max(0,Math.min(S.combos.length-1,S.curCombo+d)); renderResults(); }
+function computeStats(combo) {
+  let credits = 0, placed = 0;
+  const occupied = {}, labDays = new Set(), dayCells = {}, flags = [], clashes = new Set();
+  DAYS.forEach(d => dayCells[d] = []);
 
-function buildTT(combo) {
-  const grid = {};
-  DAYS.forEach(day => { grid[day] = {}; for(let c=0;c<12;c++) grid[day][c]=null; });
+  combo.forEach(({ code, pair, clashWith }) => {
+    if (!pair) {
+      flags.push(`<div class="flag miss" data-miss="${code}">
+        <span class="flag-k">${COURSES[code].short}</span>
+        <span class="flag-t">doesn't fit${clashWith ? ` — ${clashWith} holds those slots` : ""}</span>
+      </div>`);
+      return;
+    }
+    placed++; credits += COURSES[code].credits;
+    ["theory", "lab"].forEach(kind => {
+      if (!pair[kind]) return;
+      slotCells(pair[kind].slot).forEach(c => {
+        if (kind === "lab") labDays.add(c.day);
+        dayCells[c.day].push(code);
+      });
+      slotKeys(pair[kind].slot).forEach(k => {
+        if (occupied[k]) clashes.add(`${COURSES[code].short} overlaps ${COURSES[occupied[k].code].short}`);
+        else occupied[k] = { code, type: kind };
+      });
+    });
+  });
 
-  combo.forEach(({code,pair}) => {
-    if (!pair) return;
+  [...clashes].slice(0, 3).forEach(c =>
+    flags.push(`<div class="flag"><span class="flag-k">Overlap</span><span class="flag-t">${c}</span></div>`));
+
+  const freeNames = DAYS.filter(d => !labDays.has(d));
+  return { credits, placed, occupied, dayCells, labDays, freeDays: freeNames.length, freeNames, flags };
+}
+
+function loadMeter(stats) {
+  const max = Math.max(1, ...DAYS.map(d => stats.dayCells[d].length));
+  return `<div class="load-bars">` + DAYS.map(d => {
+    const list = stats.dayCells[d];
+    const isFree = !stats.labDays.has(d);
+    const segs = list.length
+      ? list.map((code, i) => `<div class="load-seg" style="--c:${COURSES[code].color};height:${(1 / max) * 100}%;animation-delay:${i * 28}ms"></div>`).join("")
+      : `<div class="load-free"></div>`;
+    return `<div class="load-col">
+      <div class="load-stack">${segs}</div>
+      <div class="load-d${isFree ? " free" : ""}">${d[0]}</div>
+    </div>`;
+  }).join("") + `</div>`;
+}
+
+function legend(combo) {
+  return combo.filter(x => x.pair).map(({ code }) => {
     const c = COURSES[code];
-    if (pair.theory) {
-      slotCells(pair.theory.slot).forEach(cell => {
-        if (!cell.isLab && grid[cell.day]) grid[cell.day][cell.col] = {code,pair,color:c.color,short:c.short,isTheory:true};
+    return `<button class="leg" data-leg="${code}" style="--c:${c.color}">
+      <span class="leg-d"></span>${c.short}</button>`;
+  }).join("");
+}
+
+// ── the grid ────────────────────────────────────────────────
+function buildGrid(combo) {
+  const grid = {};
+  DAYS.forEach(d => { grid[d] = {}; });
+  combo.forEach(({ code, pair }) => {
+    if (!pair) return;
+    ["theory", "lab"].forEach(kind => {
+      if (!pair[kind]) return;
+      slotCells(pair[kind].slot).forEach(cell => {
+        const wantLab = kind === "lab";
+        if (cell.isLab === wantLab && grid[cell.day]) grid[cell.day][cell.col] = { code, kind, entry: pair[kind] };
       });
-    }
-    if (pair.lab) {
-      slotCells(pair.lab.slot).forEach(cell => {
-        if (cell.isLab && grid[cell.day]) grid[cell.day][cell.col] = {code,pair,color:c.color,short:c.short,isLab:true};
-      });
-    }
+    });
   });
 
-  const cols = [
-    {p:"P1",  time:"08:00-08:50", theory:"A1",  lab:"L1",  cidx:0},
-    {p:"P2",  time:"08:51-09:40", theory:null,  lab:"L2",  cidx:1},
-    {p:"P3",  time:"09:51-10:40", theory:"F1",  lab:"L3",  cidx:2},
-    {p:"P4",  time:"10:41-11:30", theory:null,  lab:"L4",  cidx:3},
-    {p:"P5",  time:"11:40-12:30", theory:"D1",  lab:"L5",  cidx:4},
-    {p:"P6",  time:"12:31-01:20", theory:null,  lab:"L6",  cidx:5},
-    null,
-    {p:"P7",  time:"02:00-02:50", theory:"A2",  lab:"L31", cidx:6},
-    {p:"P8",  time:"02:51-03:40", theory:null,  lab:"L32", cidx:7},
-    {p:"P9",  time:"03:51-04:40", theory:"F2",  lab:"L33", cidx:8},
-    {p:"P10", time:"04:41-05:30", theory:null,  lab:"L34", cidx:9},
-    {p:"P11", time:"05:40-06:30", theory:"D2",  lab:"L35", cidx:10},
-    {p:"P12", time:"06:31-07:20", theory:null,  lab:"L36", cidx:11},
-  ];
-
-  let h = `<div class="tt-scroll"><table class="tt">`;
-
-  h += `<thead><tr><th class="th-corner">THEORY<br><span class="th-lab-lbl">LAB</span></th>`;
-  cols.forEach(col => {
-    if (!col) { h += `<th class="th-brk"></th>`; return; }
-    const isMorn = col.cidx < 6;
-    h += `<th class="th-col ${isMorn?'morning':'evening'}">
-      <div class="th-p">${col.p}</div>
-      <div class="th-time">${col.time}</div>
-      <div class="th-slots">${col.theory||''}${col.theory&&col.lab?'/':''}${col.lab||''}</div>
-    </th>`;
-  });
+  let h = `<div class="tt-scroll"><table class="tt"><thead><tr><th class="tt-corner"></th>`;
+  for (let i = 0; i < 12; i++) {
+    if (i === 6) h += `<th class="tt-gap"></th>`;
+    h += `<th class="tt-col"><span class="tt-p">P${i + 1}</span><span class="tt-time">${COL_TIMES[i]}</span></th>`;
+  }
   h += `</tr></thead><tbody>`;
 
-  DAYS.forEach(day => {
-    h += `<tr><td class="td-day">${day}</td>`;
-    cols.forEach(col => {
-      if (!col) { h += `<td class="td-brk"></td>`; return; }
-      const entry = grid[day][col.cidx];
-      const thLbl = col.theory ? (DAY_THEORY[day][col.cidx]||col.theory) : '';
-      const lbLbl = col.lab ? (DAY_LAB[day][col.cidx]||col.lab) : '';
-      const slotLbl = thLbl && lbLbl ? thLbl+'/'+lbLbl : thLbl||lbLbl;
-      if (entry) {
-        const fac = entry.isTheory ? (entry.pair.theory?.f||'') : (entry.pair.lab?.f||'');
-        h += `<td class="td-cell td-filled" style="background:${entry.color}28;border-top:3px solid ${entry.color};border:1px solid ${entry.color}55">
-          <div class="cell-lbl">${slotLbl}</div>
-          <div class="cell-short" style="color:${entry.color}">${entry.short}</div>
-          <div class="cell-fac">${fac.split(' ')[0]}</div>
-        </td>`;
+  DAYS.forEach((day, di) => {
+    const restDay = !Object.values(grid[day]).some(x => x && x.kind === "lab");
+    h += `<tr><th class="tt-day${restDay ? " rest" : ""}">${day}</th>`;
+    for (let col = 0; col < 12; col++) {
+      if (col === 6) h += `<td class="tt-gap"></td>`;
+      const hit = grid[day][col];
+      if (hit) {
+        const c = COURSES[hit.code];
+        const t = tints(c.color);
+        const slot = (hit.kind === "lab" ? DAY_LAB[day][col] : DAY_THEORY[day][col]) || "";
+        h += `<td class="cell on" data-course="${hit.code}" data-dk="${day}-${col}"
+          data-fac="${hit.entry.f}" data-venue="${hit.entry.venue || ""}" data-slot="${hit.entry.slot}"
+          style="--c:${c.color};--bg:${t.bg};--bg-hi:${t.bgHi};--fg:${t.fg};animation-delay:${(di * 12 + col) * 7}ms">
+          <div class="cell-in">
+            <span class="cell-code">${c.short}</span>
+            <span class="cell-fac">${shortFac(hit.entry.f)}</span>
+            <span class="cell-slot">${slot}</span>
+          </div></td>`;
       } else {
-        h += `<td class="td-cell td-empty ${col.cidx<6?'m':'e'}">
-          <div class="empty-lbl">${slotLbl}</div>
-        </td>`;
+        const th = DAY_THEORY[day][col], lb = DAY_LAB[day][col];
+        h += `<td class="cell free" data-dk="${day}-${col}"><span class="ghost">${[th, lb].filter(Boolean).join("/")}</span></td>`;
       }
-    });
+    }
     h += `</tr>`;
   });
-
-  h += `</tbody></table></div>`;
-  return h;
+  return h + `</tbody></table></div>`;
 }
 
-function exportPNG() {
-  const el = document.getElementById("tt-wrap");
-  if (!el||typeof html2canvas==="undefined") { alert("Export unavailable."); return; }
-  html2canvas(el,{backgroundColor:"#0d0d18",scale:2}).then(canvas=>{
-    const a=document.createElement("a"); a.download=`ffcs-tt${S.curCombo+1}.png`; a.href=canvas.toDataURL(); a.click();
+function buildAgenda(combo) {
+  const byDay = {};
+  DAYS.forEach(d => byDay[d] = []);
+  combo.forEach(({ code, pair }) => {
+    if (!pair) return;
+    ["theory", "lab"].forEach(kind => {
+      if (!pair[kind]) return;
+      slotCells(pair[kind].slot).forEach(cell => {
+        if (cell.isLab !== (kind === "lab")) return;
+        byDay[cell.day].push({ code, kind, col: cell.col, entry: pair[kind] });
+      });
+    });
+  });
+
+  return `<div class="agenda">` + DAYS.map(day => {
+    const rows = byDay[day].sort((a, b) => a.col - b.col);
+    return `<div class="ag-day">
+      <div class="ag-h"><span class="ag-d">${day}</span>
+        <span class="ag-n">${rows.length ? rows.length + " classes" : "nothing scheduled"}</span></div>
+      ${rows.map(r => {
+        const c = COURSES[r.code]; const t = tints(c.color);
+        return `<div class="ag-row" style="--c:${c.color};background:${t.bg}">
+          <span class="ag-t">${COL_TIMES[r.col]}</span>
+          <span class="ag-b"><span class="ag-c" style="color:${t.fg}">${c.short}${r.kind === "lab" ? " lab" : ""}</span>
+          <span class="ag-f">${titleCase(r.entry.f)}</span></span>
+          <span class="ag-s">${r.entry.venue || ""}</span></div>`;
+      }).join("")}
+    </div>`;
+  }).join("") + `</div>`;
+}
+
+// ── wiring after each results render ────────────────────────
+function wireResults() {
+  const prev = document.getElementById("prev-b"), next = document.getElementById("next-b");
+  if (prev) prev.onclick = () => navCombo(-1);
+  if (next) next.onclick = () => navCombo(1);
+  const png = document.getElementById("png-b");
+  if (png) png.onclick = exportPNG;
+
+  document.querySelectorAll(".cell.on").forEach(cell => {
+    cell.addEventListener("mouseenter", () => { if (!S.pinned) setFocus(cell.dataset.course); showTip(cell); });
+    cell.addEventListener("mousemove", moveTip);
+    cell.addEventListener("mouseleave", () => { if (!S.pinned) setFocus(null); hideTip(); });
+    cell.addEventListener("click", () => togglePin(cell.dataset.course));
+  });
+
+  document.querySelectorAll(".leg").forEach(btn => {
+    btn.addEventListener("mouseenter", () => { if (!S.pinned) setFocus(btn.dataset.leg); });
+    btn.addEventListener("mouseleave", () => { if (!S.pinned) setFocus(null); });
+    btn.addEventListener("click", () => togglePin(btn.dataset.leg));
+  });
+
+  document.querySelectorAll(".flag.miss").forEach(flag => {
+    flag.addEventListener("mouseenter", () => knockBlockers(flag.dataset.miss));
+  });
+
+  if (S.focus) paintFocus();
+}
+
+function setFocus(code) { S.focus = code; paintFocus(); }
+
+function togglePin(code) {
+  if (S.pinned && S.focus === code) { S.pinned = false; S.focus = null; }
+  else { S.pinned = true; S.focus = code; }
+  paintFocus();
+}
+
+function paintFocus() {
+  const tt = document.querySelector(".tt");
+  if (tt) tt.classList.toggle("focusing", !!S.focus);
+  document.querySelectorAll(".cell.on").forEach(c =>
+    c.classList.toggle("hit", c.dataset.course === S.focus));
+  document.querySelectorAll(".leg").forEach(l => {
+    l.classList.toggle("pinned", S.pinned && l.dataset.leg === S.focus);
+    l.classList.toggle("muted", !!S.focus && l.dataset.leg !== S.focus);
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-// STORAGE + INIT
-// ═══════════════════════════════════════════════════════════════
-function saveState() {
-  try { localStorage.setItem("ffcs_v4_sem4", JSON.stringify({sel:S.sel, priorities:S.priorities})); } catch(e){}
-}
-function loadState() {
-  try { const d=JSON.parse(localStorage.getItem("ffcs_v4_sem4")||"{}"); if(d.sel) Object.assign(S.sel,d.sel); if(d.priorities) Object.assign(S.priorities,d.priorities); } catch(e){}
+// hovering an unplaced course knocks the cells standing in its way
+function knockBlockers(code) {
+  const blocked = new Set();
+  buildPairs(code).forEach(pair => {
+    ["theory", "lab"].forEach(kind => {
+      if (!pair[kind]) return;
+      slotKeys(pair[kind].slot).forEach(k => {
+        if (S.occupied[k]) blocked.add(k.split("-").slice(0, 2).join("-"));
+      });
+    });
+  });
+  blocked.forEach(dk => {
+    const cell = document.querySelector(`.cell[data-dk="${dk}"]`);
+    if (!cell) return;
+    cell.classList.remove("blocked");
+    void cell.offsetWidth;
+    cell.classList.add("blocked");
+    setTimeout(() => cell.classList.remove("blocked"), 1200);
+  });
 }
 
-document.addEventListener("DOMContentLoaded", () => { loadState(); render(); });
+function navCombo(d) {
+  const n = Math.max(0, Math.min(S.combos.length - 1, S.curCombo + d));
+  if (n === S.curCombo) return;
+  S.curCombo = n;
+  S.focus = null; S.pinned = false;
+  renderResults();
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOOLTIP
+// ═══════════════════════════════════════════════════════════
+const tip = () => document.getElementById("tip");
+function showTip(cell) {
+  const t = tip(); if (!t) return;
+  const c = COURSES[cell.dataset.course];
+  t.innerHTML = `<div class="tip-f">${titleCase(cell.dataset.fac)}</div>
+    <div class="tip-m">${c.name}</div>
+    <div class="tip-m">${cell.dataset.slot}${cell.dataset.venue ? " · " + cell.dataset.venue : ""}</div>`;
+  t.hidden = false;
+}
+function moveTip(e) {
+  const t = tip(); if (!t || t.hidden) return;
+  const pad = 14;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  const r = t.getBoundingClientRect();
+  if (x + r.width > innerWidth - 8) x = e.clientX - r.width - pad;
+  if (y + r.height > innerHeight - 8) y = e.clientY - r.height - pad;
+  t.style.left = x + "px"; t.style.top = y + "px";
+}
+function hideTip() { const t = tip(); if (t) t.hidden = true; }
+
+// ═══════════════════════════════════════════════════════════
+// COMMAND PALETTE
+// ═══════════════════════════════════════════════════════════
+let palItems = [], palCursor = 0;
+
+function openPalette() {
+  const p = document.getElementById("palette");
+  p.hidden = false;
+  const inp = document.getElementById("palette-input");
+  inp.value = ""; inp.focus();
+  fillPalette("");
+}
+function closePalette() { document.getElementById("palette").hidden = true; }
+
+function fillPalette(q) {
+  q = q.toLowerCase().trim();
+  const list = document.getElementById("palette-list");
+  palItems = [];
+  Object.keys(COURSES).forEach(code => {
+    buildPairs(code).forEach(pair => {
+      if (q && !pair.faculty.toLowerCase().includes(q)) return;
+      palItems.push({ code, pair });
+    });
+  });
+  palItems = palItems.slice(0, 60);
+  palCursor = 0;
+  if (!palItems.length) {
+    list.innerHTML = `<div class="pal-none">No faculty matches that name.</div>`;
+    return;
+  }
+  list.innerHTML = palItems.map(({ code, pair }, i) => {
+    const c = COURSES[code];
+    return `<div class="pal-i${i === 0 ? " cursor" : ""}" data-i="${i}" style="--c:${c.color}">
+      <span class="pal-d"></span>
+      <span class="pal-f">${titleCase(pair.faculty)}</span>
+      <span class="pal-c">${c.short}</span>
+      <span class="pal-s">${pairSlot(pair)}</span>
+    </div>`;
+  }).join("");
+  list.querySelectorAll(".pal-i").forEach(n => {
+    n.onmousedown = e => { e.preventDefault(); choosePal(+n.dataset.i); };
+  });
+}
+
+function movePal(d) {
+  if (!palItems.length) return;
+  palCursor = (palCursor + d + palItems.length) % palItems.length;
+  const list = document.getElementById("palette-list");
+  list.querySelectorAll(".pal-i").forEach((n, i) => n.classList.toggle("cursor", i === palCursor));
+  const cur = list.querySelector(".pal-i.cursor");
+  if (cur) cur.scrollIntoView({ block: "nearest" });
+}
+
+function choosePal(i) {
+  const it = palItems[i];
+  if (!it) return;
+  addPriority(it.code, it.pair);
+  const card = document.querySelector(`.cc[data-code="${it.code}"]`);
+  if (card) card.classList.add("open");
+  closePalette();
+}
+
+// ═══════════════════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════════════════
+function setTheme(t) {
+  S.theme = t;
+  document.documentElement.setAttribute("data-theme", t);
+  try { localStorage.setItem("ffcs_theme", t); } catch (e) {}
+  if (S.combos.length) renderResults();   // re-tint cells for the new ground
+}
+function toggleTheme() { setTheme(S.theme === "dark" ? "light" : "dark"); }
+
+// ═══════════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════════
+function exportPNG() {
+  const el = document.querySelector(".t-grid");
+  if (!el || typeof html2canvas === "undefined") return;
+  const bg = getComputedStyle(document.body).backgroundColor;
+  html2canvas(el, { backgroundColor: bg, scale: 2, logging: false }).then(canvas => {
+    const a = document.createElement("a");
+    a.download = `ffcs-timetable-${S.curCombo + 1}.png`;
+    a.href = canvas.toDataURL();
+    a.click();
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// STORAGE + INIT
+// ═══════════════════════════════════════════════════════════
+function saveState() {
+  try { localStorage.setItem("ffcs_v4_sem4", JSON.stringify({ sel: S.sel, priorities: S.priorities })); } catch (e) {}
+}
+function loadState() {
+  try {
+    const d = JSON.parse(localStorage.getItem("ffcs_v4_sem4") || "{}");
+    if (d.sel) Object.assign(S.sel, d.sel);
+    if (d.priorities) Object.assign(S.priorities, d.priorities);
+  } catch (e) {}
+  let t = null;
+  try { t = localStorage.getItem("ffcs_theme"); } catch (e) {}
+  if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  S.theme = t;
+  document.documentElement.setAttribute("data-theme", t);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadState();
+  render();
+
+  document.getElementById("gen-btn").onclick = generate;
+  document.getElementById("theme-btn").onclick = toggleTheme;
+  document.getElementById("palette-btn").onclick = openPalette;
+  document.getElementById("clear-btn").onclick = () => {
+    S.priorities = {}; S.combos = []; S.focus = null; S.pinned = false;
+    render();
+  };
+
+  if (!/Mac|iPhone|iPad/.test(navigator.platform)) {
+    const k = document.getElementById("kbd-hint");
+    if (k) k.textContent = "Ctrl K";
+  }
+
+  const palInput = document.getElementById("palette-input");
+  palInput.addEventListener("input", () => fillPalette(palInput.value));
+  palInput.addEventListener("keydown", e => {
+    if (e.key === "ArrowDown") { e.preventDefault(); movePal(1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); movePal(-1); }
+    else if (e.key === "Enter") { e.preventDefault(); choosePal(palCursor); }
+  });
+  document.getElementById("palette").addEventListener("mousedown", e => {
+    if (e.target.id === "palette") closePalette();
+  });
+
+  document.addEventListener("keydown", e => {
+    const typing = /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openPalette(); return; }
+    if (e.key === "Escape") {
+      closePalette();
+      if (S.pinned) { S.pinned = false; S.focus = null; paintFocus(); }
+      return;
+    }
+    if (typing) return;
+    if (e.key === "ArrowRight") navCombo(1);
+    else if (e.key === "ArrowLeft") navCombo(-1);
+    else if (e.key.toLowerCase() === "g") generate();
+    else if (e.key.toLowerCase() === "t") toggleTheme();
+    else if (e.key === "/") { e.preventDefault(); openPalette(); }
+  });
+});
