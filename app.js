@@ -2,6 +2,7 @@
 // STATE
 // ═══════════════════════════════════════════════════════════════
 window._state = {
+  sel: { QQ:"TIME", HSM:"BAHUM109" },
   priorities: {},
   combos: [], curCombo: 0, warnings: []
 };
@@ -91,8 +92,27 @@ function generate() {
 // ═══════════════════════════════════════════════════════════════
 function render() {
   saveState();
+  renderSelectors();
   renderCards();
   renderResults();
+}
+
+function renderSelectors() {
+  renderSelGroup("sel-HSM", "HSM", COURSES.HSM.selectorOptions, COURSES.HSM.selectorNames);
+  renderSelGroup("sel-QQ", "QQ", COURSES.QQ.selectorOptions, {});
+}
+
+function renderSelGroup(elId, key, opts, names) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = "";
+  opts.forEach(opt => {
+    const b = document.createElement("button");
+    b.className = "sel-btn" + (S.sel[key] === opt ? " active" : "");
+    b.textContent = names[opt] || opt;
+    b.onclick = () => { S.sel[key] = opt; S.priorities[key] = []; S.combos = []; render(); };
+    el.appendChild(b);
+  });
 }
 
 function renderCards() {
@@ -344,10 +364,10 @@ function exportPNG() {
 // STORAGE + INIT
 // ═══════════════════════════════════════════════════════════════
 function saveState() {
-  try { localStorage.setItem("ffcs_v4_sem4", JSON.stringify({priorities:S.priorities})); } catch(e){}
+  try { localStorage.setItem("ffcs_v4_sem4", JSON.stringify({sel:S.sel, priorities:S.priorities})); } catch(e){}
 }
 function loadState() {
-  try { const d=JSON.parse(localStorage.getItem("ffcs_v4_sem4")||"{}"); if(d.priorities) Object.assign(S.priorities,d.priorities); } catch(e){}
+  try { const d=JSON.parse(localStorage.getItem("ffcs_v4_sem4")||"{}"); if(d.sel) Object.assign(S.sel,d.sel); if(d.priorities) Object.assign(S.priorities,d.priorities); } catch(e){}
 }
 
 document.addEventListener("DOMContentLoaded", () => { loadState(); render(); });

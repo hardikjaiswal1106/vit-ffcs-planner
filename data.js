@@ -314,6 +314,121 @@ const COURSES = {
       {f:"BALASUBRAMANIAN C",slot:"L51+L52+L55+L56",venue:"PRP356"},
       {f:"BALASUBRAMANIAN C",slot:"L11+L12+L19+L20",venue:"PRP356"},
     ]
+  },
+  ETHICS:{code:"BAHUM103",name:"Ethics and Values",short:"ethics",color:"#7C2D8F",credits:2,
+    theory:[
+      {f:"SIVAKUMAR S",slot:"F1",venue:"TT621"},
+      {f:"MULUGU S NEELOTPAL",slot:"F1",venue:"TT305"},
+      {f:"MULUGU S NEELOTPAL",slot:"F2",venue:"TT621"},
+      {f:"KUBENDRAN A",slot:"F1",venue:"TT333"},
+      {f:"KUBENDRAN A",slot:"F2",venue:"SJT101"},
+      {f:"BHUVANESWARI M",slot:"F2",venue:"SJT102"},
+      {f:"RAJAMEENAKSHI J",slot:"F1",venue:"SMVG21"},
+      {f:"RASI R A",slot:"F2",venue:"SMV214"},
+      {f:"BALAMURUGAN J",slot:"F1",venue:"SJT409"},
+      {f:"BALAMURUGAN J",slot:"F2",venue:"SJT408"},
+      {f:"SUDHEER C V",slot:"F1",venue:"PRPG26"},
+      {f:"SUDHEER C V",slot:"F2",venue:"PRPG26"},
+      {f:"BANGALORE MORARJI",slot:"F1",venue:"SMV320"},
+      {f:"BANGALORE MORARJI",slot:"F2",venue:"SMV220"},
+      {f:"NILAVATHY K",slot:"F1",venue:"TT201"},
+      {f:"RAHUL SHUKLA",slot:"F1",venue:"PRP230"},
+      {f:"POONAM SHARMA",slot:"F1",venue:"PRP304"},
+      {f:"POONAM SHARMA",slot:"F2",venue:"PRP304"},
+      {f:"RAMNATH REGHUNADHAN",slot:"F1",venue:"PRP306"},
+      {f:"MOHD OWAIS KHAN",slot:"F1",venue:"PRP318"},
+      {f:"RAHUL SHUKLA",slot:"F2",venue:"PRP318"},
+      {f:"SHAHID HAMID RAINA",slot:"F2",venue:"PRP319"},
+      {f:"BHUVANESWARI M",slot:"F1",venue:"PRP323"},
+      {f:"NILAVATHY K",slot:"F2",venue:"PRP306"},
+      {f:"SAVITHA N",slot:"F1",venue:"PRP313"},
+      {f:"SAVITHA N",slot:"F2",venue:"PRP313"},
+      {f:"TONY P JOSE",slot:"F1",venue:"PRP332"},
+      {f:"TONY P JOSE",slot:"F2",venue:"PRP322"},
+      {f:"SUMEETHA M",slot:"F2",venue:"PRP333"},
+      {f:"ABHIJIT DASGUPTA",slot:"F1",venue:"PRP322"},
+      {f:"ABHIJIT DASGUPTA",slot:"F2",venue:"PRP323"},
+      {f:"SALMAN HAIDER",slot:"F1",venue:"PRP414"},
+      {f:"AQUIB PARVEZ",slot:"F1",venue:"PRP319"},
+      {f:"AQUIB PARVEZ",slot:"F2",venue:"PRP320"},
+      {f:"ADIL AHMAD SHAH",slot:"F1",venue:"PRP333"},
+      {f:"NAVIN KUMAR",slot:"F1",venue:"TT334"},
+      {f:"NAVIN KUMAR",slot:"G1",venue:"TT416"},
+      {f:"RIZWAN AHMAD",slot:"F1",venue:"PRP330"},
+      {f:"SALMAN HAIDER",slot:"F2",venue:"PRP204"},
+      {f:"SHAHID HAMID RAINA",slot:"F1",venue:"PRP334"},
+      {f:"SUMEETHA M",slot:"F1",venue:"PRP339"},
+      {f:"MOHD OWAIS KHAN",slot:"F2",venue:"PRP330"},
+      {f:"ADIL AHMAD SHAH",slot:"G2",venue:"TT334"},
+      {f:"TANU KUKREJA",slot:"F2",venue:"PRP334"},
+      {f:"SREYA SEN",slot:"G2",venue:"TT333"},
+      {f:"RAMNATH REGHUNADHAN",slot:"G1",venue:"TT204"},
+      {f:"TANU KUKREJA",slot:"G1",venue:"SMV116"},
+      {f:"RIZWAN AHMAD",slot:"F2",venue:"PRP214"},
+    ],
+    lab:[]
+  },
+  QQ:{code:"BASTS102",name:"Qualitative & Quantitative Skills Practice II",short:"skills",color:"#0891B2",credits:1,
+    isSelector:true,selectorKey:"QQ",
+    selectorOptions:["TIME","ETHNUS","FACE","SIXPHRASE"],
+    theory:[
+      {f:"FACE",slot:"D2+TD2",venue:"PRP320"},{f:"ETHNUS",slot:"E1+TE1",venue:"MB213"},
+      {f:"ETHNUS",slot:"D2+TD2",venue:"PRP304"},{f:"FACE",slot:"D2+TD2",venue:"PRP319"},
+      {f:"FACE",slot:"D1+TD1",venue:"PRP320"},{f:"ETHNUS",slot:"E1+TE1",venue:"MB211"},
+      {f:"ETHNUS",slot:"E2+TE2",venue:"MB211"},{f:"ETHNUS",slot:"E1+TE1",venue:"PRPG32"},
+      {f:"ETHNUS",slot:"D2+TD2",venue:"PRP224"},{f:"ETHNUS",slot:"D1+TD1",venue:"PRP304"},
+      {f:"ETHNUS",slot:"D2+TD2",venue:"PRP306"},{f:"ETHNUS",slot:"D2+TD2",venue:"PRP309"},
+      {f:"ETHNUS",slot:"D1+TD1",venue:"PRP308"},{f:"ETHNUS",slot:"D2+TD2",venue:"PRP308"},
+      {f:"ETHNUS",slot:"D1+TD1",venue:"PRP309"},{f:"FACE",slot:"D1+TD1",venue:"PRP318"},
+      {f:"FACE",slot:"D1+TD1",venue:"PRP319"},{f:"SIXPHRASE",slot:"D1+TD1",venue:"PRP322"},
+      {f:"FACE",slot:"D2+TD2",venue:"PRP322"},{f:"SIXPHRASE",slot:"D2+TD2",venue:"PRP411"},
+      {f:"SIXPHRASE",slot:"D1+TD1",venue:"PRP414"},{f:"SIXPHRASE",slot:"D2+TD2",venue:"PRP414"},
+      {f:"TIME",slot:"D1+TD1",venue:"PRP332"},{f:"ETHNUS",slot:"D2+TD2",venue:"PRP332"},
+      {f:"TIME",slot:"D1+TD1",venue:"PRP333"},{f:"TIME",slot:"D1+TD1",venue:"PRP334"},
+      {f:"TIME",slot:"D2+TD2",venue:"PRP334"},{f:"TIME",slot:"D1+TD1",venue:"PRP339"},
+      {f:"TIME",slot:"D2+TD2",venue:"PRP339"},{f:"TIME",slot:"E1+TE1",venue:"SMV116"},
+      {f:"TIME",slot:"E2+TE2",venue:"SMV116"},{f:"SIXPHRASE",slot:"E1+TE1",venue:"SMV101"},
+      {f:"SIXPHRASE",slot:"E2+TE2",venue:"SMV101"},{f:"ETHNUS",slot:"E1+TE1",venue:"MB212"},
+      {f:"SIXPHRASE",slot:"E1+TE1",venue:"CDMM103"},{f:"SIXPHRASE",slot:"E2+TE2",venue:"CDMM103"},
+      {f:"ETHNUS",slot:"E2+TE2",venue:"MB212"},{f:"ETHNUS",slot:"E1+TE1",venue:"TT201"},
+      {f:"ETHNUS",slot:"E2+TE2",venue:"TT201"},{f:"FACE",slot:"E2+TE2",venue:"MB213"},
+      {f:"FACE",slot:"E1+TE1",venue:"TT204"},{f:"FACE",slot:"E2+TE2",venue:"TT204"},
+      {f:"FACE",slot:"E1+TE1",venue:"MB214"},{f:"FACE",slot:"E2+TE2",venue:"MB214"},
+      {f:"FACE",slot:"E1+TE1",venue:"SJT224"},{f:"FACE",slot:"E2+TE2",venue:"SJT224"},
+      {f:"SIXPHRASE",slot:"E1+TE1",venue:"SJT215"},{f:"SIXPHRASE",slot:"E2+TE2",venue:"SJT221"},
+      {f:"TIME",slot:"E2+TE2",venue:"SJT222"},{f:"TIME",slot:"E1+TE1",venue:"SJT223"},
+      {f:"TIME",slot:"E2+TE2",venue:"SJT223"},{f:"ETHNUS",slot:"E2+TE2",venue:"PRPG32"},
+      {f:"ETHNUS",slot:"E2+TE2",venue:"PRPG33"},{f:"FACE",slot:"E1+TE1",venue:"PRPG34"},
+      {f:"FACE",slot:"E2+TE2",venue:"PRPG34"},{f:"FACE",slot:"E1+TE1",venue:"PRP134"},
+      {f:"FACE",slot:"E2+TE2",venue:"PRP134"},{f:"SIXPHRASE",slot:"E1+TE1",venue:"PRP238"},
+      {f:"SIXPHRASE",slot:"E2+TE2",venue:"PRP238"},{f:"SIXPHRASE",slot:"D1+TD1",venue:"PRP323"},
+      {f:"TIME",slot:"D2+TD2",venue:"PRP333"},{f:"ETHNUS",slot:"E1+TE1",venue:"PRPG33"},
+      {f:"FACE",slot:"D2+TD2",venue:"PRP313"},{f:"TIME",slot:"E2+TE2",venue:"PRP238A"},
+      {f:"TIME",slot:"E1+TE1",venue:"PRP238A"},{f:"FACE",slot:"D2+TD2",venue:"PRP318"},
+      {f:"ETHNUS",slot:"D1+TD1",venue:"PRP224"},{f:"TIME",slot:"E1+TE1",venue:"SJT222"},
+      {f:"SIXPHRASE",slot:"D1+TD1",venue:"PRP411"},{f:"FACE",slot:"D1+TD1",venue:"PRP313"},
+      {f:"ETHNUS",slot:"D1+TD1",venue:"PRP306"},{f:"SIXPHRASE",slot:"E2+TE2",venue:"SJT215"},
+      {f:"SIXPHRASE",slot:"D2+TD2",venue:"PRP323"},{f:"SIXPHRASE",slot:"E1+TE1",venue:"SJT221"},
+    ],
+    lab:[]
+  },
+  HSM:{code:"HSM",name:"HSM Elective",short:"HSM",color:"#BE185D",credits:3,
+    isSelector:true,selectorKey:"HSM",
+    // NOTE: only 2 options were present in the FFCS doc sent (it cut off before
+    // any BAHUM111/112-style options) — add more here once you send the rest.
+    selectorOptions:["BAHUM109","BAHUM110"],
+    selectorNames:{"BAHUM109":"Principles of Sociology","BAHUM110":"Sustainability"},
+    theory:{
+      "BAHUM109":[
+        {f:"BALAMURUGAN J",slot:"B1+TB1",venue:"SJT408"},
+        {f:"RAHUL SHUKLA",slot:"B1+TB1",venue:"SJT103"},
+        {f:"RAHUL SHUKLA",slot:"B2+TB2",venue:"SJT124"},
+      ],
+      "BAHUM110":[
+        {f:"KUBENDRAN A",slot:"B2+TB2",venue:"TT415"},
+      ]
+    },
+    lab:[]
   }
 };
 
@@ -322,8 +437,33 @@ const COURSES = {
 // Evening theory (slot ends in 2) → morning lab (L1-L30)
 // Morning theory (slot ends in 1) → evening lab (L31-L60)
 // ═══════════════════════════════════════════════════════════════
-function getTheoryArr(code) { return COURSES[code].theory || []; }
-function getLabArr(code) { return COURSES[code].lab || []; }
+function getSel(code) {
+  return window._state?.sel?.[code] || null;
+}
+
+function getTheoryArr(code) {
+  const c = COURSES[code];
+  let arr = c.theory;
+  if (!arr) return [];
+  if (c.isSelector) {
+    const sel = getSel(code);
+    if (Array.isArray(arr)) return arr.filter(o => o.f === sel);
+    return arr[sel] || [];
+  }
+  return arr;
+}
+
+function getLabArr(code) {
+  const c = COURSES[code];
+  let arr = c.lab;
+  if (!arr || (Array.isArray(arr) && arr.length === 0)) return [];
+  if (c.isSelector) {
+    const sel = getSel(code);
+    if (Array.isArray(arr)) return arr;
+    return arr[sel] || [];
+  }
+  return arr;
+}
 
 function buildPairs(code) {
   const thArr = getTheoryArr(code);
