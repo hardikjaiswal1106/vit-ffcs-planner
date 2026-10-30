@@ -74,7 +74,7 @@ function isEveningTheory(slotStr) {
 // COURSE DATA — 4th SEM
 // ═══════════════════════════════════════════════════════════════
 const COURSES = {
-  MOC:{code:"MOC",name:"Models of Computation",short:"moc",color:"#7C3AED",credits:3,
+  MOC:{code:"BACSE201",name:"Models of Computation",short:"moc",color:"#7C3AED",credits:4,
     theory:[
       {f:"ANITHA E",slot:"C1+TC1+TCC1",venue:"PRP323"},
       {f:"ANITHA E",slot:"C2+TC2+TCC2",venue:"PRP323"},
@@ -113,7 +113,7 @@ const COURSES = {
     ],
     lab:[]
   },
-  SE:{code:"SE",name:"Software Engineering",short:"se",color:"#0EA5E9",credits:4,
+  SE:{code:"BACSE204",name:"Software Engineering",short:"se",color:"#0EA5E9",credits:4,
     theory:[
       {f:"JUSTIN GOPINATH A",slot:"E2+TE2",venue:"PRP308"},
       {f:"JUSTIN GOPINATH A",slot:"E1+TE1",venue:"PRP308"},
@@ -197,7 +197,7 @@ const COURSES = {
       {f:"BHAVANI S",slot:"L39+L40",venue:"SJT121"},
     ]
   },
-  AIML:{code:"AIML",name:"Fundamentals of AIML",short:"aiml",color:"#059669",credits:4,
+  AIML:{code:"BACSE205",name:"Fundamentals of AIML",short:"aiml",color:"#059669",credits:4,
     theory:[
       {f:"MONASH P",slot:"G2+TG2",venue:"PRP308"},
       {f:"MONASH P",slot:"G1+TG1",venue:"PRP308"},
@@ -263,7 +263,7 @@ const COURSES = {
       {f:"SANJIBAN SEKHAR ROY",slot:"L19+L20",venue:"SJT517"},
     ]
   },
-  FS:{code:"FS",name:"Full Stack",short:"fullstack",color:"#DC2626",credits:4,
+  FS:{code:"BACSE325",name:"Full Stack",short:"fullstack",color:"#DC2626",credits:4,
     theory:[
       {f:"BALASUBRAMANIAN C",slot:"A2",venue:"PRP322"},
       {f:"BALASUBRAMANIAN C",slot:"A1",venue:"PRP322"},
