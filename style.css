@@ -401,7 +401,7 @@ td.tt-gap::after{
 .tt-day.rest{ color:var(--brass) }
 
 .cell{
-  height:70px; min-width:72px; border-radius:var(--r-sm);
+  height:80px; min-width:72px; border-radius:var(--r-sm);
   vertical-align:middle; text-align:center; padding:0;
   border:1px solid var(--line-soft);
   transition:opacity .22s, transform .18s, box-shadow .18s, border-color .18s;
@@ -428,6 +428,7 @@ td.tt-gap::after{
 }
 .cell-fac{ font-size:.65rem; color:var(--ink-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .cell-slot{ font-family:var(--mono); font-size:.58rem; color:var(--ink-3) }
+.cell-time{ font-family:var(--mono); font-size:.54rem; color:var(--ink-3); opacity:.75; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 
 /* cross-highlight */
 .tt.focusing .cell.on{ opacity:.26 }

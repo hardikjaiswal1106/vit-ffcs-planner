@@ -482,6 +482,7 @@ function buildGrid(combo) {
             <span class="cell-code">${c.short}</span>
             <span class="cell-fac">${shortFac(hit.entry.f)}</span>
             <span class="cell-slot">${slot}</span>
+            <span class="cell-time">${cellTime}</span>
           </div></td>`;
       } else {
         const th = DAY_THEORY[day][col], lb = DAY_LAB[day][col];
