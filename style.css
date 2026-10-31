@@ -351,6 +351,18 @@ kbd{
 /* ══ TIMETABLE ═════════════════════════════════════════════ */
 .t-grid{ grid-column:1/-1; overflow:hidden; flex:1; display:flex; flex-direction:column }
 
+/* Off-screen clone used only for Save-image export — see exportPNG().
+   Fully static: no clipping, no scrolling, no settle-in animation, so the
+   PNG always matches the grid at rest regardless of hover/scroll state. */
+.export-clone{
+  position:fixed; left:-10000px; top:0; z-index:-1;
+  width:1060px; height:auto; overflow:visible; flex:none; display:block;
+}
+.export-clone .tt-scroll{ overflow:visible; width:auto; display:block }
+.export-clone .tt{ width:auto }
+.export-clone .cell.on{ animation:none; opacity:1; transform:none }
+.export-clone .agenda{ display:none }
+
 .grid-head{
   display:flex; align-items:center; gap:12px;
   padding:12px 16px; border-bottom:1px solid var(--line-soft);

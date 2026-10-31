@@ -701,50 +701,39 @@ function toggleTheme() { setTheme(S.theme === "dark" ? "light" : "dark"); }
 // EXPORT
 // ═══════════════════════════════════════════════════════════
 function exportPNG() {
-  const wrap = document.querySelector(".t-grid");
-  const scroll = document.querySelector(".tt-scroll");
-  const table = document.querySelector(".tt");
-  if (!wrap || !scroll || !table || typeof html2canvas === "undefined") return;
+  if (typeof html2canvas === "undefined") return;
+  const combo = S.combos[S.curCombo];
+  if (!combo) return;
 
-  // 1) Any live hover/pin highlight dims the rest of the grid — reset it so
-  //    the export is always a clean, full-opacity snapshot.
-  const hadFocus = S.focus, hadPinned = S.pinned;
-  S.focus = null; S.pinned = false; paintFocus();
+  // Capturing the live on-page grid was fragile — it picks up mid-animation
+  // opacity, hover/pin dimming, and gets cropped by the scroll strip's
+  // overflow. Instead, render a separate, fully-settled, full-width copy
+  // off-screen and capture that, so what you get always matches what the
+  // grid actually looks like at rest.
+  const clone = document.createElement("div");
+  clone.className = "tile t-grid export-clone";
+  clone.innerHTML = `
+    <div class="grid-head">
+      <span class="grid-title">Week</span>
+      <div class="legend">${legend(combo)}</div>
+    </div>
+    ${buildGrid(combo)}`;
+  document.body.appendChild(clone);
 
-  // 2) Both the outer tile and the scroll strip clip overflow for on-screen
-  //    layout, which silently cropped off whatever columns were scrolled
-  //    out of view. Temporarily let everything expand to its true width.
-  const prevWrapOverflow = wrap.style.overflow;
-  const prevScrollOverflow = scroll.style.overflow;
-  const prevScrollLeft = scroll.scrollLeft;
-  wrap.style.overflow = "visible";
-  scroll.style.overflow = "visible";
-  scroll.scrollLeft = 0;
-
-  const fullWidth = table.scrollWidth + 24; // + the scroll strip's own padding
-
-  requestAnimationFrame(() => {
+  // Let the browser lay it out (no animation, nothing scrolled, full size)
+  // before handing it to html2canvas.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
     const bg = getComputedStyle(document.body).backgroundColor;
-    html2canvas(wrap, {
-      backgroundColor: bg, scale: 2, logging: false,
-      width: fullWidth, windowWidth: fullWidth
-    }).then(canvas => {
-      wrap.style.overflow = prevWrapOverflow;
-      scroll.style.overflow = prevScrollOverflow;
-      scroll.scrollLeft = prevScrollLeft;
-      S.focus = hadFocus; S.pinned = hadPinned; paintFocus();
-
-      const a = document.createElement("a");
-      a.download = `ffcs-timetable-${S.curCombo + 1}.png`;
-      a.href = canvas.toDataURL();
-      a.click();
-    }).catch(() => {
-      wrap.style.overflow = prevWrapOverflow;
-      scroll.style.overflow = prevScrollOverflow;
-      scroll.scrollLeft = prevScrollLeft;
-      S.focus = hadFocus; S.pinned = hadPinned; paintFocus();
-    });
-  });
+    html2canvas(clone, { backgroundColor: bg, scale: 2, logging: false })
+      .then(canvas => {
+        clone.remove();
+        const a = document.createElement("a");
+        a.download = `ffcs-timetable-${S.curCombo + 1}.png`;
+        a.href = canvas.toDataURL();
+        a.click();
+      })
+      .catch(() => clone.remove());
+  }));
 }
 
 // ═══════════════════════════════════════════════════════════
