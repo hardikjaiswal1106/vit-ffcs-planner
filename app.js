@@ -17,10 +17,21 @@ const S = window._state;
 // (per VIT's official grid). Keep both so every cell shows its true time.
 const THEORY_COL_TIMES = ["8:00","9:00","10:00","11:00","12:00","",
                           "2:00","3:00","4:00","5:00","6:00",""];
+const THEORY_COL_END   = ["8:50","9:50","10:50","11:50","12:50","",
+                          "2:50","3:50","4:50","5:50","6:50",""];
 const LAB_COL_TIMES = ["8:00","8:51","9:51","10:41","11:40","12:31",
                        "2:00","2:51","3:51","4:41","5:40","6:31"];
+const LAB_COL_END   = ["8:50","9:40","10:40","11:30","12:30","1:20",
+                       "2:50","3:40","4:40","5:30","6:30","7:20"];
 // Back-compat alias for any stray reference — defaults to theory timing.
 const COL_TIMES = THEORY_COL_TIMES;
+
+function periodRange(kind, col) {
+  const start = (kind === "lab" ? LAB_COL_TIMES : THEORY_COL_TIMES)[col];
+  const end   = (kind === "lab" ? LAB_COL_END   : THEORY_COL_END)[col];
+  if (!start) return "";
+  return end ? `${start} – ${end}` : start;
+}
 
 // Source data is ALL CAPS; soften it for display, keep slot codes as-is.
 const titleCase = s => String(s).toLowerCase()
@@ -463,7 +474,7 @@ function buildGrid(combo) {
         const c = COURSES[hit.code];
         const t = tints(c.color);
         const slot = (hit.kind === "lab" ? DAY_LAB[day][col] : DAY_THEORY[day][col]) || "";
-        const cellTime = hit.kind === "lab" ? LAB_COL_TIMES[col] : THEORY_COL_TIMES[col];
+        const cellTime = periodRange(hit.kind, col);
         h += `<td class="cell on" data-course="${hit.code}" data-dk="${day}-${col}"
           data-fac="${hit.entry.f}" data-venue="${hit.entry.venue || ""}" data-slot="${hit.entry.slot}" data-time="${cellTime}"
           style="--c:${c.color};--bg:${t.bg};--bg-hi:${t.bgHi};--fg:${t.fg};animation-delay:${(di * 12 + col) * 7}ms">
@@ -504,7 +515,7 @@ function buildAgenda(combo) {
       ${rows.map(r => {
         const c = COURSES[r.code]; const t = tints(c.color);
         return `<div class="ag-row" style="--c:${c.color};background:${t.bg}">
-          <span class="ag-t">${(r.kind === "lab" ? LAB_COL_TIMES : THEORY_COL_TIMES)[r.col]}</span>
+          <span class="ag-t">${periodRange(r.kind, r.col)}</span>
           <span class="ag-b"><span class="ag-c" style="color:${t.fg}">${c.short}${r.kind === "lab" ? " lab" : ""}</span>
           <span class="ag-f">${titleCase(r.entry.f)}</span></span>
           <span class="ag-s">${r.entry.venue || ""}</span></div>`;
