@@ -429,6 +429,53 @@ const COURSES = {
       ]
     },
     lab:[]
+  },
+  CLOUDINFRA:{code:"BACSE344",name:"Cloud Infrastructure",short:"Cloud Infra",color:"#4A4E7C",credits:4,
+    theory:[
+      {f:"KARTHIKEYAN A",slot:"B2+TB2+TBB2",venue:"PRP304"},
+      {f:"KEERTHIKA P",slot:"B2+TB2+TBB2",venue:"PRP306"},
+      {f:"SURESH P",slot:"A1+TA1+TAA1",venue:"PRP414"},
+      {f:"JAYACHANDRAN J",slot:"C1+TC1+TCC1",venue:"PRP414"},
+    ],
+    lab:[]
+  },
+  EDA:{code:"BACSEXXX",name:"Exploratory Data Analysis",short:"EDA",color:"#8C4F63",credits:4,
+    theory:[
+      {f:"RAJKUMAR R",slot:"B2+TB2",venue:"PRP318"},
+      {f:"KALYANARAMAN P",slot:"B1+TB1",venue:"PRP318"},
+      {f:"SARAVANAKUMAR K",slot:"B2+TB2",venue:"PRP320"},
+      {f:"ANNY LEEMA A",slot:"B2+TB2",venue:"PRP319"},
+      {f:"KARTHIKEYAN A",slot:"B1+TB1",venue:"PRP320"},
+      {f:"PRABAKARAN N",slot:"B1+TB1",venue:"PRP309"},
+      {f:"PRABAKARAN N",slot:"B2+TB2",venue:"PRP309"},
+      {f:"THIRUMOORTHY K",slot:"B1+TB1",venue:"PRP313"},
+      {f:"THIRUMOORTHY K",slot:"B2+TB2",venue:"PRP313"},
+      {f:"JAYALAKSHMI M",slot:"B1+TB1",venue:"PRP322"},
+      {f:"JAYAKUMAR K",slot:"B2+TB2",venue:"PRP322"},
+      {f:"KATHIRAVAN S",slot:"B1+TB1",venue:"PRP323"},
+      {f:"PRAKASH M",slot:"B2+TB2",venue:"PRP323"},
+      {f:"SUBRAMANIYASWAMY V",slot:"B1+TB1",venue:"PRP411"},
+      {f:"SWETHA V",slot:"B2+TB2",venue:"PRP411"},
+      {f:"BALAKRISHNAN P",slot:"B1+TB1",venue:"PRP319"},
+    ],
+    lab:[
+      {f:"SARAVANAKUMAR K",slot:"L3+L4",venue:"PRP354"},
+      {f:"KALYANARAMAN P",slot:"L51+L52",venue:"PRP354"},
+      {f:"RAJKUMAR R",slot:"L13+L14",venue:"PRP354"},
+      {f:"ANNY LEEMA A",slot:"L15+L16",venue:"PRP354"},
+      {f:"KARTHIKEYAN A",slot:"L43+L44",venue:"PRP354"},
+      {f:"PRABAKARAN N",slot:"L39+L40",venue:"PRP354"},
+      {f:"PRABAKARAN N",slot:"L23+L24",venue:"PRP354"},
+      {f:"THIRUMOORTHY K",slot:"L31+L32",venue:"PRP354"},
+      {f:"THIRUMOORTHY K",slot:"L9+L10",venue:"PRP354"},
+      {f:"BALAKRISHNAN P",slot:"L45+L46",venue:"PRP354"},
+      {f:"JAYALAKSHMI M",slot:"L55+L56",venue:"PRP354"},
+      {f:"JAYAKUMAR K",slot:"L7+L8",venue:"PRP354"},
+      {f:"KATHIRAVAN S",slot:"L35+L36",venue:"PRP354"},
+      {f:"PRAKASH M",slot:"L5+L6",venue:"PRP354"},
+      {f:"SUBRAMANIYASWAMY V",slot:"L31+L32",venue:"PRP655"},
+      {f:"SWETHA V",slot:"L27+L28",venue:"PRP655"},
+    ]
   }
 };
 
