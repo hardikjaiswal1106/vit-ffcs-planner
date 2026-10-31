@@ -449,9 +449,7 @@ function buildGrid(combo) {
   let h = `<div class="tt-scroll"><table class="tt"><thead><tr><th class="tt-corner"></th>`;
   for (let i = 0; i < 12; i++) {
     if (i === 6) h += `<th class="tt-gap"></th>`;
-    const th = THEORY_COL_TIMES[i], lb = LAB_COL_TIMES[i];
-    const timeLabel = th ? (th === lb ? th : `${th} / ${lb}`) : lb;
-    h += `<th class="tt-col"><span class="tt-p">P${i + 1}</span><span class="tt-time">${timeLabel}</span></th>`;
+    h += `<th class="tt-col"><span class="tt-p">P${i + 1}</span><span class="tt-time">${THEORY_COL_TIMES[i] || LAB_COL_TIMES[i]}</span></th>`;
   }
   h += `</tr></thead><tbody>`;
 
