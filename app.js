@@ -701,14 +701,49 @@ function toggleTheme() { setTheme(S.theme === "dark" ? "light" : "dark"); }
 // EXPORT
 // ═══════════════════════════════════════════════════════════
 function exportPNG() {
-  const el = document.querySelector(".t-grid");
-  if (!el || typeof html2canvas === "undefined") return;
-  const bg = getComputedStyle(document.body).backgroundColor;
-  html2canvas(el, { backgroundColor: bg, scale: 2, logging: false }).then(canvas => {
-    const a = document.createElement("a");
-    a.download = `ffcs-timetable-${S.curCombo + 1}.png`;
-    a.href = canvas.toDataURL();
-    a.click();
+  const wrap = document.querySelector(".t-grid");
+  const scroll = document.querySelector(".tt-scroll");
+  const table = document.querySelector(".tt");
+  if (!wrap || !scroll || !table || typeof html2canvas === "undefined") return;
+
+  // 1) Any live hover/pin highlight dims the rest of the grid — reset it so
+  //    the export is always a clean, full-opacity snapshot.
+  const hadFocus = S.focus, hadPinned = S.pinned;
+  S.focus = null; S.pinned = false; paintFocus();
+
+  // 2) Both the outer tile and the scroll strip clip overflow for on-screen
+  //    layout, which silently cropped off whatever columns were scrolled
+  //    out of view. Temporarily let everything expand to its true width.
+  const prevWrapOverflow = wrap.style.overflow;
+  const prevScrollOverflow = scroll.style.overflow;
+  const prevScrollLeft = scroll.scrollLeft;
+  wrap.style.overflow = "visible";
+  scroll.style.overflow = "visible";
+  scroll.scrollLeft = 0;
+
+  const fullWidth = table.scrollWidth + 24; // + the scroll strip's own padding
+
+  requestAnimationFrame(() => {
+    const bg = getComputedStyle(document.body).backgroundColor;
+    html2canvas(wrap, {
+      backgroundColor: bg, scale: 2, logging: false,
+      width: fullWidth, windowWidth: fullWidth
+    }).then(canvas => {
+      wrap.style.overflow = prevWrapOverflow;
+      scroll.style.overflow = prevScrollOverflow;
+      scroll.scrollLeft = prevScrollLeft;
+      S.focus = hadFocus; S.pinned = hadPinned; paintFocus();
+
+      const a = document.createElement("a");
+      a.download = `ffcs-timetable-${S.curCombo + 1}.png`;
+      a.href = canvas.toDataURL();
+      a.click();
+    }).catch(() => {
+      wrap.style.overflow = prevWrapOverflow;
+      scroll.style.overflow = prevScrollOverflow;
+      scroll.scrollLeft = prevScrollLeft;
+      S.focus = hadFocus; S.pinned = hadPinned; paintFocus();
+    });
   });
 }
 
