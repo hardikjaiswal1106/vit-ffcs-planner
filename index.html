@@ -39,6 +39,10 @@
     <button class="theme-btn" id="theme-btn" aria-label="Switch theme">
       <span class="theme-track"><span class="theme-knob"></span></span>
     </button>
+    <button class="filters-btn" id="filters-btn" data-on="false" aria-label="Toggle 8 AM / back-to-back filters">
+      <span class="filters-lbl">8AM</span>
+      <span class="filters-track"><span class="filters-knob"></span></span>
+    </button>
     <button class="btn-primary" id="gen-btn">Generate</button>
   </div>
 </header>
@@ -50,6 +54,34 @@
       <section class="rail-sec">
         <span class="pick-l">Skills vendor</span>
         <div class="seg" id="sel-QQ"></div>
+      </section>
+
+      <section class="rail-sec" id="filters-sec" hidden>
+        <h2 class="rail-h">Timetable filters</h2>
+        <label class="opt">
+          <input type="checkbox" class="opt-box" data-filter="no8amLab">
+          <span class="opt-sw" aria-hidden="true"></span>
+          <span class="opt-txt">
+            <span class="opt-t">Skip 8 AM labs</span>
+            <span class="opt-s">Drop timetables with a lab in the first period</span>
+          </span>
+        </label>
+        <label class="opt">
+          <input type="checkbox" class="opt-box" data-filter="noBackToBackLabs">
+          <span class="opt-sw" aria-hidden="true"></span>
+          <span class="opt-txt">
+            <span class="opt-t">Skip back-to-back labs</span>
+            <span class="opt-s">Drop timetables where two different labs run one after the other</span>
+          </span>
+        </label>
+        <label class="opt">
+          <input type="checkbox" class="opt-box" data-filter="minEffort">
+          <span class="opt-sw" aria-hidden="true"></span>
+          <span class="opt-txt">
+            <span class="opt-t">Minimal effort</span>
+            <span class="opt-s">Lightest timetables first: even days, short days, fewer lab days</span>
+          </span>
+        </label>
       </section>
 
       <section class="rail-sec">

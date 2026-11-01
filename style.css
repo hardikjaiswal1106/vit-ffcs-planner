@@ -166,6 +166,27 @@ kbd{
 }
 [data-theme="dark"] .theme-knob{ transform:translateX(19px) }
 
+/* 8 AM / back-to-back filter switch */
+.filters-btn{
+  background:none; border:none; cursor:pointer; padding:3px;
+  display:flex; align-items:center; gap:7px;
+}
+.filters-lbl{ font-size:.72rem; color:var(--ink-3); font-weight:500; letter-spacing:-.01em }
+.filters-btn[data-on="true"] .filters-lbl{ color:var(--ink) }
+.filters-track{
+  width:30px; height:17px; border-radius:99px; padding:2px;
+  background:var(--line-soft); border:1px solid var(--line);
+  display:flex; transition:background .3s;
+}
+.filters-knob{
+  width:11px; height:11px; border-radius:50%;
+  background:var(--ink-3);
+  transition:transform .3s cubic-bezier(.65,0,.35,1), background .3s;
+  box-shadow:0 1px 3px rgba(0,0,0,.22);
+}
+.filters-btn[data-on="true"] .filters-track{ background:color-mix(in oklab, var(--brass) 55%, transparent) }
+.filters-btn[data-on="true"] .filters-knob{ transform:translateX(13px); background:var(--brass-deep) }
+
 /* ══ SHELL ═════════════════════════════════════════════════ */
 .shell{
   display:grid; grid-template-columns:292px minmax(0,1fr);
@@ -195,6 +216,25 @@ kbd{
 .pick{ margin-bottom:11px }
 .pick:last-child{ margin-bottom:0 }
 .pick-l{ display:block; font-size:.71rem; color:var(--ink-3); margin-bottom:5px }
+
+.opt{ display:flex; align-items:flex-start; gap:10px; padding:8px 0; cursor:pointer }
+.opt:not(:last-child){ border-bottom:1px solid var(--line-soft) }
+.opt-box{ position:absolute; opacity:0; width:0; height:0; pointer-events:none }
+.opt-sw{
+  flex-shrink:0; margin-top:2px; width:30px; height:17px; border-radius:99px;
+  background:var(--line-soft); box-shadow:inset 0 0 0 1px var(--line-soft);
+  transition:background .18s;
+}
+.opt-sw::after{
+  content:""; display:block; width:13px; height:13px; margin:2px; border-radius:50%;
+  background:var(--ink-3); transition:transform .18s, background .18s;
+}
+.opt-box:checked + .opt-sw{ background:color-mix(in oklab, var(--brass) 55%, transparent) }
+.opt-box:checked + .opt-sw::after{ transform:translateX(13px); background:var(--brass-deep) }
+.opt-box:focus-visible + .opt-sw{ outline:2px solid var(--brass); outline-offset:2px }
+.opt-txt{ display:flex; flex-direction:column; gap:2px }
+.opt-t{ font-size:.78rem; font-weight:500; line-height:1.3 }
+.opt-s{ font-size:.71rem; color:var(--ink-3); line-height:1.4 }
 .seg{ display:flex; flex-wrap:wrap; gap:4px }
 .seg-btn{
   font-family:inherit; font-size:.72rem; font-weight:500; color:var(--ink-2);

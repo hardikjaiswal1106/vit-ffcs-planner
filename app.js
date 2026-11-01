@@ -4,6 +4,8 @@
 window._state = {
   sel: { QQ:"TIME", HSM:"BAHUM109" },
   priorities: {},
+  filtersOn: false,     // master switch: off = normal mode, exactly as before these filters existed
+  filters: { no8amLab: false, noBackToBackLabs: false, minEffort: false },
   combos: [], curCombo: 0, warnings: [],
   occupied: {},         // slot key -> {code,type}  for current combo
   focus: null,          // course code currently cross-highlighted
@@ -62,12 +64,163 @@ function tints(courseHex){
 }
 
 // ═══════════════════════════════════════════════════════════
-// GENERATE  (algorithm unchanged)
+// TIMETABLE FILTERS
+// ═══════════════════════════════════════════════════════════
+// Lab periods P1-P6 are the morning half and P7-P12 the afternoon half; the
+// lunch break sits between P6 and P7, so labs never count as back-to-back
+// across it. Column 0 (P1) is the 8:00 AM lab period.
+const LAB_FIRST_COL = 0;
+const LAB_HALF = 6;
+
+// [{day, col}] for every lab period a pair occupies. Cached per pair object —
+// the generator asks about the same pairs thousands of times.
+const _labCells = new WeakMap();
+function pairLabCells(pair) {
+  if (!pair || !pair.lab) return [];
+  let v = _labCells.get(pair);
+  if (!v) { v = slotCells(pair.lab.slot).filter(c => c.isLab); _labCells.set(pair, v); }
+  return v;
+}
+
+// Every grid cell key a pair occupies (theory + lab). Cached like the above.
+const _pairKeys = new WeakMap();
+function pairKeys(pair) {
+  let v = _pairKeys.get(pair);
+  if (!v) {
+    v = [...(pair.theory ? slotKeys(pair.theory.slot) : []), ...(pair.lab ? slotKeys(pair.lab.slot) : [])];
+    _pairKeys.set(pair, v);
+  }
+  return v;
+}
+
+// Why this pair is not allowed given the filters and what is already placed
+// ("8am" | "b2b" | null). Pure — never touches shared state.
+function filterReason(pair, placed) {
+  const f = S.filters;
+  const mine = pairLabCells(pair);
+  if (!mine.length) return null;
+
+  if (f.no8amLab && mine.some(c => c.col === LAB_FIRST_COL)) return "8am";
+
+  if (f.noBackToBackLabs) {
+    // A lab course already takes two adjacent periods itself (e.g. L1+L2), so
+    // "back to back" means two different lab courses touching on one day.
+    const taken = new Set();
+    placed.forEach(p => pairLabCells(p).forEach(c => taken.add(`${c.day}-${c.col}`)));
+    const touches = mine.some(c => {
+      const sameHalf = n => n >= 0 && n < 12 && Math.floor(n / LAB_HALF) === Math.floor(c.col / LAB_HALF);
+      return [c.col - 1, c.col + 1].some(n => sameHalf(n) && taken.has(`${c.day}-${n}`));
+    });
+    if (touches) return "b2b";
+  }
+  return null;
+}
+
+const FILTER_REASON_TEXT = {
+  "8am": "an 8 AM lab",
+  "b2b": "back-to-back labs"
+};
+
+// ═══════════════════════════════════════════════════════════
+// MINIMAL EFFORT
+// ═══════════════════════════════════════════════════════════
+// "Minimal effort" is a ranking, not a cut-off. Timetables are ordered by, in
+// this priority:
+//   0. courses placed — more is always better, otherwise dropping a course
+//      would look like "less effort"
+//   1. even spread   — how far each weekday's class count is from the average
+//      (squared), so no day is much heavier than the rest. Differences under
+//      EVEN_TOLERANCE count as a tie, so the next rule gets a say.
+//   2. short days    — first class start to last class end, summed over days
+//   3. fewer lab days — days that contain a lab. Theory-only days are light.
+const EVEN_TOLERANCE = 1;
+
+function clockMinutes(t) {            // "8:51" -> minutes since midnight; 1-7 are PM
+  const [h, m] = t.split(":").map(Number);
+  return (h < 8 ? h + 12 : h) * 60 + m;
+}
+
+// [{day, start, end, lab}] — one entry per class period a pair occupies,
+// with real clock times. Cached per pair object (thousands of timetables share them).
+const _effortCells = new WeakMap();
+function pairEffortCells(pair) {
+  let v = _effortCells.get(pair);
+  if (v) return v;
+  v = [];
+  ["theory", "lab"].forEach(kind => {
+    if (!pair[kind]) return;
+    const starts = kind === "lab" ? LAB_COL_TIMES : THEORY_COL_TIMES;
+    const ends   = kind === "lab" ? LAB_COL_END   : THEORY_COL_END;
+    slotCells(pair[kind].slot).forEach(c => {
+      if (c.isLab !== (kind === "lab") || !starts[c.col]) return;
+      v.push({ day: c.day, start: clockMinutes(starts[c.col]), end: clockMinutes(ends[c.col]), lab: kind === "lab" });
+    });
+  });
+  _effortCells.set(pair, v);
+  return v;
+}
+
+function effortMetrics(combo) {
+  const day = {};
+  DAYS.forEach(d => day[d] = { n: 0, start: Infinity, end: -Infinity });
+  const labDays = new Set();
+  let placed = 0;
+  combo.forEach(({ pair }) => {
+    if (!pair) return;
+    placed++;
+    pairEffortCells(pair).forEach(c => {
+      const d = day[c.day];
+      d.n++;
+      if (c.start < d.start) d.start = c.start;
+      if (c.end   > d.end)   d.end   = c.end;
+      if (c.lab) labDays.add(c.day);
+    });
+  });
+  const total = DAYS.reduce((t, n) => t + day[n].n, 0), mean = total / DAYS.length;
+  let uneven = 0, span = 0, maxDay = 0, longest = 0;
+  DAYS.forEach(n => {
+    const d = day[n];
+    uneven += (d.n - mean) * (d.n - mean);
+    if (!d.n) return;
+    span += d.end - d.start;
+    maxDay = Math.max(maxDay, d.n);
+    longest = Math.max(longest, d.end - d.start);
+  });
+  return { placed, uneven, span, labDays: labDays.size, maxDay, longest };
+}
+
+function compareEffort(a, b) {
+  return (b.placed - a.placed)
+    || (Math.round(a.uneven / EVEN_TOLERANCE) - Math.round(b.uneven / EVEN_TOLERANCE))
+    || (a.span - b.span)
+    || (a.labDays - b.labDays)
+    || (a.uneven - b.uneven);
+}
+
+// Sort timetables lightest first and tag each with its metrics.
+function rankByEffort(combos) {
+  combos.forEach(c => { c.__fx = effortMetrics(c); });
+  return combos.sort((a, b) => compareEffort(a.__fx, b.__fx));
+}
+
+// ═══════════════════════════════════════════════════════════
+// GENERATE
 // ═══════════════════════════════════════════════════════════
 function generate() {
   const codes = Object.keys(COURSES);
   const MAX = 50;
+  const effort = !!S.filters.minEffort;
+  // Normally the first 50 clash-free timetables are kept. For minimal effort the
+  // lightest ones may be anywhere in the search, so gather a much larger pool
+  // (several passes, each exploring faculty in a different order) and keep the best 50.
+  const POOL = effort ? 30000 : MAX;
+  const PASSES = effort ? 400 : 1;
+  // Limits only apply to minimal-effort mode; the normal search is exactly as before.
+  const NODE_BUDGET = effort ? 1500 : Infinity;   // per pass: many short passes beat a few long ones
+  const DEADLINE = effort ? Date.now() + 3000 : Infinity;   // safety net only: the node budget normally ends the search first
   const combos = [], warnings = [];
+  const seen = new Set();
+  let cap = POOL, nodes = 0, shuffled = false;
 
   // A course with nobody ranked is left out entirely — it is never
   // auto-filled with a random faculty. Only ranked faculty are ever used.
@@ -85,58 +238,82 @@ function generate() {
     unranked[code] = prios.length === 0;
   });
 
+  // Deterministic shuffle so a given ranking always gives the same result.
+  let rng = 12345;
+  const rand = () => (rng = (rng * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const shuffle = arr => {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  };
+
   function backtrack(idx, current, used) {
-    if (combos.length >= MAX) return;
-    if (idx === codes.length) { combos.push([...current]); return; }
+    if (combos.length >= cap || nodes++ > NODE_BUDGET) return;
+    if ((nodes & 255) === 0 && Date.now() > DEADLINE) { nodes = NODE_BUDGET + 1; return; }
+    if (idx === codes.length) {
+      const key = current.map(x => x.pair ? x.pair.display : "-").join("#");
+      if (!seen.has(key)) { seen.add(key); combos.push([...current]); }
+      return;
+    }
     const code = codes[idx];
-    const pairs = coursePairs[code] || [];
+    const pairs = shuffled ? shuffle(coursePairs[code] || []) : (coursePairs[code] || []);
     let placed = false;
+    const placedPairs = current.map(x => x.pair);   // unchanged while looping over this course's pairs
     for (const pair of pairs) {
-      const keys = [
-        ...(pair.theory ? slotKeys(pair.theory.slot) : []),
-        ...(pair.lab    ? slotKeys(pair.lab.slot)    : [])
-      ];
+      const keys = pairKeys(pair);
       if (keys.some(k => used.has(k))) continue;
+      const why = filterReason(pair, placedPairs);
+      if (why) continue;
       keys.forEach(k => used.add(k));
       current.push({ code, pair });
       backtrack(idx + 1, current, used);
       current.pop();
       keys.forEach(k => used.delete(k));
       placed = true;
-      if (combos.length >= MAX) return;
+      if (combos.length >= cap || nodes > NODE_BUDGET) return;
     }
     if (!placed || pairs.length === 0) {
-      const reasons = [];
-      pairs.forEach(pair => {
-        const keys = [
-          ...(pair.theory ? slotKeys(pair.theory.slot) : []),
-          ...(pair.lab    ? slotKeys(pair.lab.slot)    : [])
-        ];
-        keys.forEach(k => {
-          if (!used.has(k)) return;
-          const blocker = current.find(({pair:p}) => {
-            if (!p) return false;
-            const bk = [
-              ...(p.theory ? slotKeys(p.theory.slot) : []),
-              ...(p.lab    ? slotKeys(p.lab.slot)    : [])
-            ];
-            return bk.includes(k);
-          });
-          if (blocker) reasons.push(COURSES[blocker.code].short);
-        });
-      });
-      current.push({
-        code, pair: null,
-        clashWith: [...new Set(reasons)].slice(0,2).join(" and "),
-        noPrio: unranked[code]
-      });
+      // Why it didn't fit is worked out later, for the timetables actually shown —
+      // doing it here would run at every dead end of the search.
+      current.push({ code, pair: null, noPrio: unranked[code] });
       backtrack(idx + 1, current, used);
       current.pop();
     }
   }
 
-  backtrack(0, [], new Set());
-  S.combos = combos; S.curCombo = 0; S.warnings = warnings;
+  for (let pass = 0; pass < PASSES; pass++) {
+    shuffled = pass > 0;              // pass 0 keeps your priority order
+    nodes = 0;
+    backtrack(0, [], new Set());
+    if (combos.length >= cap || Date.now() > DEADLINE) break;
+  }
+  const result = effort ? rankByEffort(combos).slice(0, MAX) : combos;
+
+  // For every course a timetable couldn't place, record what blocked it: other
+  // courses holding its slots (clashWith) and/or your filters (filteredBy).
+  // Mirrors what the search saw: only courses earlier in the order count.
+  result.forEach(combo => combo.forEach((entry, idx) => {
+    if (entry.pair || entry.noPrio || "clashWith" in entry) return;
+    const earlier = combo.slice(0, idx).filter(x => x.pair);
+    const used = new Set(earlier.flatMap(x => pairKeys(x.pair)));
+    const placedPairs = earlier.map(x => x.pair);
+    const reasons = [], filtered = new Set();
+    (coursePairs[entry.code] || []).forEach(pair => {
+      const hit = pairKeys(pair).filter(k => used.has(k));
+      if (!hit.length) {
+        const why = filterReason(pair, placedPairs);
+        if (why) filtered.add(why);
+        return;
+      }
+      hit.forEach(k => {
+        const blocker = earlier.find(x => pairKeys(x.pair).includes(k));
+        if (blocker) reasons.push(COURSES[blocker.code].short);
+      });
+    });
+    entry.clashWith = [...new Set(reasons)].slice(0, 2).join(" and ");
+    entry.filteredBy = [...filtered].map(r => FILTER_REASON_TEXT[r]).join(" or ");
+  }));
+  S.combos = result; S.curCombo = 0; S.warnings = warnings;
   S.focus = null; S.pinned = false;
   renderResults();
 }
@@ -153,7 +330,44 @@ function render() {
 
 function renderSelectors() {
   seg("sel-QQ", "QQ", COURSES.QQ.selectorOptions, {});
+  renderFilters();
 }
+
+function renderFilters() {
+  // Master switch, off by default: when off, the three checkboxes below are
+  // hidden and every filter is forced off, so generate() behaves exactly as
+  // it did before this filter feature existed — the "normal" mode.
+  const sec = document.getElementById("filters-sec");
+  if (sec) sec.hidden = !S.filtersOn;
+  const btn = document.getElementById("filters-btn");
+  if (btn) btn.setAttribute("data-on", S.filtersOn ? "true" : "false");
+
+  document.querySelectorAll(".opt-box[data-filter]").forEach(box => {
+    const key = box.dataset.filter;
+    box.checked = !!S.filters[key];
+    box.onchange = () => {
+      S.filters[key] = box.checked;
+      S.combos = [];
+      saveState();
+      render();
+    };
+  });
+}
+
+function setFiltersOn(on) {
+  S.filtersOn = on;
+  if (!on) {
+    // Leaving filter mode clears every filter too, so re-entering starts clean
+    // and generate() is identical to the pre-filter "normal" behavior.
+    S.filters.no8amLab = false;
+    S.filters.noBackToBackLabs = false;
+    S.filters.minEffort = false;
+  }
+  S.combos = [];
+  saveState();
+  render();
+}
+function toggleFiltersOn() { setFiltersOn(!S.filtersOn); }
 
 function seg(elId, key, opts, names) {
   const el = document.getElementById(elId);
@@ -339,8 +553,9 @@ function renderResults() {
     <div class="bento">
       <div class="tile t-nav">
         <div>
-          <div class="t-lbl">Timetable</div>
+          <div class="t-lbl">Timetable${S.filters.minEffort ? " · lightest first" : ""}</div>
           <div class="t-num"><span id="n-cur">${S.curCombo + 1}</span><span class="of"> / ${S.combos.length}${S.combos.length === 50 ? "+" : ""}</span></div>
+          ${combo.__fx ? `<div class="t-sub">busiest day ${combo.__fx.maxDay}, longest day ${Math.round(combo.__fx.longest / 60 * 10) / 10}h</div>` : ""}
         </div>
         <div class="nav-row">
           <button class="nav-b" id="prev-b" ${S.curCombo === 0 ? "disabled" : ""} aria-label="Previous">‹</button>
@@ -387,11 +602,15 @@ function computeStats(combo) {
   const occupied = {}, labDays = new Set(), dayCells = {}, flags = [], clashes = new Set();
   DAYS.forEach(d => dayCells[d] = []);
 
-  combo.forEach(({ code, pair, clashWith, noPrio }) => {
+  combo.forEach(({ code, pair, clashWith, noPrio, filteredBy }) => {
     if (!pair) {
       const msg = noPrio
         ? "not ranked — rank a faculty to include it"
-        : `doesn't fit${clashWith ? ` — ${clashWith} holds those slots` : ""}`;
+        : clashWith
+          ? `doesn't fit — ${clashWith} holds those slots`
+          : filteredBy
+            ? `every option has ${filteredBy}`
+            : "doesn't fit";
       flags.push(`<div class="flag miss" data-miss="${code}">
         <span class="flag-k">${COURSES[code].short}</span>
         <span class="flag-t">${msg}</span>
@@ -740,13 +959,15 @@ function exportPNG() {
 // STORAGE + INIT
 // ═══════════════════════════════════════════════════════════
 function saveState() {
-  try { localStorage.setItem("ffcs_v4_sem4", JSON.stringify({ sel: S.sel, priorities: S.priorities })); } catch (e) {}
+  try { localStorage.setItem("ffcs_v4_sem4", JSON.stringify({ sel: S.sel, priorities: S.priorities, filters: S.filters, filtersOn: S.filtersOn })); } catch (e) {}
 }
 function loadState() {
   try {
     const d = JSON.parse(localStorage.getItem("ffcs_v4_sem4") || "{}");
     if (d.sel) Object.assign(S.sel, d.sel);
     if (d.priorities) Object.assign(S.priorities, d.priorities);
+    if (d.filters) Object.assign(S.filters, d.filters);
+    if (typeof d.filtersOn === "boolean") S.filtersOn = d.filtersOn;
   } catch (e) {}
   let t = null;
   try { t = localStorage.getItem("ffcs_theme"); } catch (e) {}
@@ -761,6 +982,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("gen-btn").onclick = generate;
   document.getElementById("theme-btn").onclick = toggleTheme;
+  document.getElementById("filters-btn").onclick = toggleFiltersOn;
   document.getElementById("palette-btn").onclick = openPalette;
   document.getElementById("clear-btn").onclick = () => {
     S.priorities = {}; S.combos = []; S.focus = null; S.pinned = false;
